@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc, query, limit, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from './AuthContext';
 
@@ -22,44 +22,69 @@ export function DataProvider({ children }) {
   const activeUserId = publicUserId || currentUser?.uid;
 
   useEffect(() => {
-    if (!activeUserId) {
-      setProfile(null);
-      setLinks([]);
-      setLoading(false);
-      return;
-    }
+    let unsubscribeProfile = () => {};
+    let unsubscribeLinks = () => {};
 
-    setLoading(true);
-    const profileRef = doc(db, 'users', activeUserId);
-    const linksRef = collection(db, 'users', activeUserId, 'links');
+    const loadData = async () => {
+      let targetUserId = activeUserId;
 
-    const unsubscribeProfile = onSnapshot(profileRef, (docSnap) => {
-      if (docSnap.exists()) {
-        setProfile({ id: docSnap.id, ...docSnap.data() });
-      } else {
-        setProfile({
-          name: '',
-          subLabel: '',
-          avatarUrl: '',
-          socials: { instagram: '', facebook: '', x: '', linkedin: '' }
-        });
+      // If no specific user is requested, blindly fetch the first user in the database to display at the root domain
+      if (!targetUserId) {
+        setLoading(true);
+        try {
+          const defaultQuery = query(collection(db, 'users'), limit(1));
+          const snapshot = await getDocs(defaultQuery);
+          if (!snapshot.empty) {
+            targetUserId = snapshot.docs[0].id;
+          } else {
+            setProfile(null);
+            setLinks([]);
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.error("Failed to fetch default public user", e);
+          setProfile(null);
+          setLinks([]);
+          setLoading(false);
+          return;
+        }
       }
-    });
 
-    const unsubscribeLinks = onSnapshot(linksRef, (snapshot) => {
-      const linksData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      // Sort by createdAt descending locally or via query. Local is fine for simple lists.
-      linksData.sort((a, b) => {
-        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-        return timeB - timeA;
+      setLoading(true);
+      const profileRef = doc(db, 'users', targetUserId);
+      const linksRef = collection(db, 'users', targetUserId, 'links');
+
+      unsubscribeProfile = onSnapshot(profileRef, (docSnap) => {
+        if (docSnap.exists()) {
+          setProfile({ id: docSnap.id, ...docSnap.data() });
+        } else {
+          setProfile(null);
+        }
+      }, (error) => {
+        console.error("Profile fetch error:", error);
+        setProfile(null);
       });
-      setLinks(linksData);
-      setLoading(false);
-    });
+
+      unsubscribeLinks = onSnapshot(linksRef, (snapshot) => {
+        const linksData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        linksData.sort((a, b) => {
+          const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+          const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+          return timeB - timeA;
+        });
+        setLinks(linksData);
+        setLoading(false);
+      }, (error) => {
+        console.error("Links fetch error:", error);
+        setLoading(false);
+      });
+    };
+
+    loadData();
 
     return () => {
       unsubscribeProfile();
