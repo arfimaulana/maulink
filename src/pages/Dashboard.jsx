@@ -3,7 +3,7 @@ import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { LogOut, Plus, Search, Image as ImageIcon, Copy, Edit2, Trash2, Link as LinkIcon, Settings, LayoutDashboard, Check, X, User } from 'lucide-react';
+import { LogOut, Plus, Search, Image as ImageIcon, Copy, Edit2, Trash2, Link as LinkIcon, Settings, LayoutDashboard, Check, X, User, Scissors, ExternalLink, Activity } from 'lucide-react';
 import CreatableSelect from 'react-select/creatable';
 import Select from 'react-select';
 import { Dialog, Transition } from '@headlessui/react';
@@ -72,7 +72,7 @@ export default function Dashboard() {
   const [editingLink, setEditingLink] = useState(null);
   const [linkToDelete, setLinkToDelete] = useState(null);
   const [linkForm, setLinkForm] = useState({
-    title: '', url: '', price: '', currency: 'USD', category: '', isVisible: true, thumbnailUrl: ''
+    title: '', url: '', price: '', currency: 'USD', category: '', isVisible: true, thumbnailUrl: '', shortCode: ''
   });
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [savingLink, setSavingLink] = useState(false);
@@ -119,12 +119,13 @@ export default function Dashboard() {
         currency: link.currency || 'USD',
         category: link.category || '',
         isVisible: link.isVisible ?? true,
-        thumbnailUrl: link.thumbnailUrl || ''
+        thumbnailUrl: link.thumbnailUrl || '',
+        shortCode: link.shortCode || ''
       });
     } else {
       setEditingLink(null);
       setLinkForm({
-        title: '', url: '', price: '', currency: 'USD', category: '', isVisible: true, thumbnailUrl: ''
+        title: '', url: '', price: '', currency: 'USD', category: '', isVisible: true, thumbnailUrl: '', shortCode: ''
       });
     }
     setThumbnailFile(null);
@@ -151,7 +152,7 @@ export default function Dashboard() {
       setIsModalOpen(false);
     } catch (e) {
       console.error(e);
-      alert('Failed to save link');
+      alert(e.message || 'Failed to save link');
     } finally {
       setSavingLink(false);
     }
@@ -174,6 +175,13 @@ export default function Dashboard() {
             className={clsx("w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors", activeTab === 'links' ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-gray-50")}
           >
             <LayoutDashboard className="w-5 h-5" /> Dashboard
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('shortener')}
+            className={clsx("w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors", activeTab === 'shortener' ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-gray-50")}
+          >
+            <Scissors className="w-5 h-5" /> Shortener
           </button>
 
           <button
@@ -202,6 +210,11 @@ export default function Dashboard() {
             >Links</button>
 
             <button
+              onClick={() => setActiveTab('shortener')}
+              className={clsx("flex-1 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium", activeTab === 'shortener' ? "bg-white shadow border border-gray-100" : "text-slate-500")}
+            >Shorts</button>
+
+            <button
               onClick={() => setActiveTab('settings')}
               className={clsx("flex-1 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium", activeTab === 'settings' ? "bg-white shadow border border-gray-100" : "text-slate-500")}
             >Settings</button>
@@ -209,7 +222,7 @@ export default function Dashboard() {
           </div>
 
           {/* Profile Section (Left Column) */}
-          <div className={clsx("lg:col-span-4", activeTab === 'settings' ? "hidden" : activeTab === 'profile' || window.innerWidth >= 1024 ? "block" : "hidden lg:block")}>
+          <div className={clsx("lg:col-span-4", activeTab === 'links' ? "block" : "hidden")}>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-lg font-bold text-slate-800 mb-6">Profile Settings</h2>
 
@@ -280,7 +293,7 @@ export default function Dashboard() {
           </div>
 
           {/* Links Section (Right Column) */}
-          <div className={clsx("lg:col-span-8", activeTab === 'settings' ? "hidden" : activeTab === 'links' || window.innerWidth >= 1024 ? "block" : "hidden lg:block")}>
+          <div className={clsx("lg:col-span-8", activeTab === 'links' ? "block" : "hidden")}>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 min-h-[500px]">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
                 <h2 className="text-lg font-bold text-slate-800">Your Links</h2>
@@ -358,6 +371,67 @@ export default function Dashboard() {
                 {filteredLinks.length === 0 && (
                   <div className="py-12 text-center text-slate-400 text-sm">
                     No links found. Create one!
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Shortener Section (Right Column Alternative) */}
+          <div className={clsx("lg:col-span-12", activeTab === 'shortener' ? "block" : "hidden")}>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 min-h-[500px]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                <h2 className="text-lg font-bold text-slate-800">Short Links Manager</h2>
+                <button onClick={() => openLinkModal()} className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-900 transition">
+                  <Plus className="w-4 h-4" /> Create Short Link
+                </button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredLinks.map(link => (
+                  <div key={link.id} className="p-5 border border-gray-100 rounded-xl hover:border-blue-100 hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all bg-white relative group flex flex-col justify-between h-48">
+                    <div>
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-md">
+                          <Scissors className="w-3.5 h-3.5" />
+                          <span className="text-xs font-bold font-mono tracking-wide">arfimaulana.com/l/{link.shortCode}</span>
+                        </div>
+                        <button
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`arfimaulana.com/l/${link.shortCode}`);
+                            setCopiedLinkId(link.id);
+                            setTimeout(() => setCopiedLinkId(null), 2000);
+                          }}
+                          title="Copy Short URL"
+                        >
+                          {copiedLinkId === link.id ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      <h3 className="font-semibold text-slate-800 text-sm line-clamp-1 mt-3 mb-1 pr-10" title={link.title}>{link.title}</h3>
+                      <a href={link.url} target="_blank" rel="noreferrer" className="text-xs text-slate-400 hover:text-blue-500 pr-2 block">
+                        <span className="line-clamp-2 break-all">
+                          <ExternalLink className="w-3 h-3 inline-block mr-1 mb-0.5 shrink-0" />{link.url}
+                        </span>
+                      </a>
+                    </div>
+                    
+                    <div className="flex justify-between items-end border-t border-gray-50 pt-3 mt-3">
+                      <div className="flex items-center gap-1.5 text-slate-600">
+                        <Activity className="w-4 h-4 text-green-500" />
+                        <span className="text-sm font-bold">{link.clicks || 0}</span>
+                        <span className="text-xs font-medium text-slate-400 uppercase tracking-widest pl-0.5">Clicks</span>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                         <button className="p-1.5 text-slate-400 hover:text-yellow-600 bg-gray-50 hover:bg-yellow-50 rounded" onClick={() => openLinkModal(link)}><Edit2 className="w-4 h-4" /></button>
+                         <button className="p-1.5 text-slate-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded" onClick={() => setLinkToDelete(link)}><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {filteredLinks.length === 0 && (
+                  <div className="col-span-full py-16 text-center text-slate-400 text-sm bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                    No short links available.
                   </div>
                 )}
               </div>
@@ -485,6 +559,20 @@ export default function Dashboard() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Destination URL</label>
                 <input type="url" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                   value={linkForm.url} onChange={e => setLinkForm({ ...linkForm, url: e.target.value })} placeholder="https://" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center justify-between">
+                  Custom Alias
+                  <span className="text-xs text-slate-400 font-normal">Optional</span>
+                </label>
+                <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 bg-gray-50">
+                  <span className="px-3 py-2 text-xs text-slate-500 border-r border-gray-200 min-w[120px] font-mono">
+                    arfimaulana.com/l/
+                  </span>
+                  <input type="text" className="flex-1 px-3 py-2 text-sm focus:outline-none bg-white font-mono"
+                    value={linkForm.shortCode || ''} onChange={e => setLinkForm({ ...linkForm, shortCode: e.target.value })} placeholder="e.g. summer-sale" />
+                </div>
               </div>
 
               <div className="flex gap-4">

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 import PublicPage from './pages/PublicPage';
+import RedirectHandler from './pages/RedirectHandler';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 
@@ -20,6 +21,7 @@ function App() {
           <Routes>
             <Route path="/" element={<PublicPage />} />
             <Route path="/:userId" element={<PublicPage />} />
+            <Route path="/l/:shortCode" element={<RedirectHandler />} />
             <Route path="/login" element={<Login />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>

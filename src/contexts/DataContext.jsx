@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc, query, limit, getDocs } from 'firebase/firestore';
+import { collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc, query, limit, getDocs, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from './AuthContext';
 
@@ -100,18 +100,82 @@ export function DataProvider({ children }) {
 
   const addLink = async (data) => {
     if (!currentUser) return;
+    
+    let finalCode = data.shortCode;
+    if (!finalCode) {
+      finalCode = Math.random().toString(36).substring(2, 8); // Auto-generate if blank
+    } else {
+      finalCode = finalCode.toLowerCase().replace(/[^a-z0-9-]/g, ''); // Sanitize alias
+    }
+
+    const shortRef = doc(db, 'shortcodes', finalCode);
+    const shortSnap = await getDoc(shortRef);
+    if (shortSnap.exists()) {
+      throw new Error(`The alias "${finalCode}" is already taken!`);
+    }
+
     const ref = collection(db, 'users', currentUser.uid, 'links');
-    await addDoc(ref, { ...data, createdAt: new Date() });
+    const newDoc = await addDoc(ref, { ...data, shortCode: finalCode, clicks: 0, createdAt: new Date() });
+
+    await setDoc(shortRef, {
+      url: data.url,
+      owner: currentUser.uid,
+      linkId: newDoc.id,
+      clicks: 0
+    });
   }
 
   const updateLink = async (linkId, data) => {
     if (!currentUser) return;
     const ref = doc(db, 'users', currentUser.uid, 'links', linkId);
+    
+    // Find existing link states so we can update the mappings dynamically
+    const existingLink = links.find(l => l.id === linkId);
+    let finalCode = data.shortCode;
+
+    // Check if user is legally trying to change the shortcode to something new
+    if (finalCode !== undefined && finalCode !== existingLink.shortCode) {
+      if (!finalCode) {
+         finalCode = Math.random().toString(36).substring(2, 8);
+      } else {
+         finalCode = finalCode.toLowerCase().replace(/[^a-z0-9-]/g, '');
+      }
+
+      const shortRef = doc(db, 'shortcodes', finalCode);
+      const shortSnap = await getDoc(shortRef);
+      if (shortSnap.exists()) throw new Error(`The alias "${finalCode}" is already taken!`);
+
+      // Claim new code globally
+      await setDoc(shortRef, {
+        url: data.url || existingLink.url,
+        owner: currentUser.uid,
+        linkId: linkId,
+        clicks: existingLink.clicks || 0
+      });
+      data.shortCode = finalCode;
+
+      // Abandon old code globally so others can use it
+      if (existingLink.shortCode) {
+        await deleteDoc(doc(db, 'shortcodes', existingLink.shortCode));
+      }
+    } else if (data.url && data.url !== existingLink.url) {
+      // Just re-routing existing destination code mapping safely
+      if (existingLink.shortCode) {
+        await updateDoc(doc(db, 'shortcodes', existingLink.shortCode), { url: data.url });
+      }
+    }
+
     await updateDoc(ref, data);
   }
 
   const deleteLinkItem = async (linkId) => {
     if (!currentUser) return;
+    
+    const existingLink = links.find(l => l.id === linkId);
+    if (existingLink?.shortCode) {
+      await deleteDoc(doc(db, 'shortcodes', existingLink.shortCode));
+    }
+
     const ref = doc(db, 'users', currentUser.uid, 'links', linkId);
     await deleteDoc(ref);
   }
