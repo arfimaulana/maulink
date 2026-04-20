@@ -441,8 +441,8 @@ export default function Dashboard() {
               {/* Thumbnail Upload */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Thumbnail Image</label>
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 shrink-0 relative flex items-center justify-center bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                <div className="flex items-start gap-4">
+                  <div className="w-16 h-16 shrink-0 relative flex items-center justify-center bg-gray-100 rounded-lg overflow-hidden border border-gray-200 mt-1">
                     {thumbnailFile ? (
                       <img src={URL.createObjectURL(thumbnailFile)} alt="" className="w-full h-full object-cover absolute inset-0" />
                     ) : linkForm.thumbnailUrl ? (
@@ -451,7 +451,27 @@ export default function Dashboard() {
                       <ImageIcon className="w-6 h-6 text-slate-300" />
                     )}
                   </div>
-                  <input type="file" className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept="image/*" onChange={e => e.target.files?.[0] && setThumbnailFile(e.target.files[0])} />
+                  <div className="flex-1 space-y-3">
+                    <input type="url" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                      placeholder="Paste image URL..." 
+                      value={!thumbnailFile ? linkForm.thumbnailUrl : ''}
+                      onChange={e => {
+                        setLinkForm({ ...linkForm, thumbnailUrl: e.target.value });
+                        if (e.target.value) setThumbnailFile(null);
+                      }}
+                    />
+                    <div className="flex items-center gap-3">
+                      <div className="h-px flex-1 bg-gray-200"></div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">OR</span>
+                      <div className="h-px flex-1 bg-gray-200"></div>
+                    </div>
+                    <input type="file" className="text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept="image/*" onChange={e => {
+                      if (e.target.files?.[0]) {
+                        setThumbnailFile(e.target.files[0]);
+                        setLinkForm({ ...linkForm, thumbnailUrl: '' });
+                      }
+                    }} />
+                  </div>
                 </div>
               </div>
 
