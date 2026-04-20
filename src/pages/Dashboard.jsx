@@ -3,7 +3,7 @@ import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { LogOut, Plus, Search, Image as ImageIcon, Copy, Edit2, Trash2, Link as LinkIcon, Settings, LayoutDashboard, Check, X, User, Scissors, ExternalLink, Activity } from 'lucide-react';
+import { LogOut, Plus, Search, Image as ImageIcon, Copy, Edit2, Trash2, Link as LinkIcon, Settings, LayoutDashboard, Check, X, User, Scissors, ExternalLink, Activity, ChevronLeft, ChevronRight, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import CreatableSelect from 'react-select/creatable';
 import Select from 'react-select';
 import { Dialog, Transition } from '@headlessui/react';
@@ -22,7 +22,13 @@ export default function Dashboard() {
   });
   const [avatarFile, setAvatarFile] = useState(null);
   const [savingProfile, setSavingProfile] = useState(false);
-  const [showProfileToast, setShowProfileToast] = useState(false);
+
+  // Generic Toast State
+  const [toast, setToast] = useState({ show: false, message: '' });
+  const showToast = (message) => {
+    setToast({ show: true, message });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+  };
 
   // Credentials State
   const [credentialsForm, setCredentialsForm] = useState({
@@ -51,7 +57,7 @@ export default function Dashboard() {
       if (credentialsForm.password) {
         await updateUserPassword(credentialsForm.password);
       }
-      alert('Credentials updated successfully!');
+      showToast('Credentials updated!');
       setCredentialsForm(prev => ({ ...prev, password: '', confirmPassword: '' }));
     } catch (e) {
       console.error(e);
@@ -77,6 +83,12 @@ export default function Dashboard() {
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [savingLink, setSavingLink] = useState(false);
 
+  // Pagination & Sort State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [sortOption, setSortOption] = useState('newest'); 
+  const [filterCategory, setFilterCategory] = useState('all');
+
   useEffect(() => {
     if (profile) {
       setProfileForm({
@@ -99,8 +111,7 @@ export default function Dashboard() {
       }
       await updateProfile({ ...profileForm, avatarUrl: finalAvatarUrl });
       setAvatarFile(null);
-      setShowProfileToast(true);
-      setTimeout(() => setShowProfileToast(false), 3000);
+      showToast('Profile saved!');
     } catch (e) {
       console.error(e);
       alert('Failed to save profile');
@@ -146,8 +157,10 @@ export default function Dashboard() {
 
       if (editingLink) {
         await updateLink(editingLink.id, payload);
+        showToast('Link updated!');
       } else {
         await addLink(payload);
+        showToast('Link created!');
       }
       setIsModalOpen(false);
     } catch (e) {
@@ -160,7 +173,30 @@ export default function Dashboard() {
 
   const categoryOptions = [...new Set(links.map(l => l.category).filter(Boolean))].map(c => ({ label: c, value: c }));
 
-  const filteredLinks = links.filter(l => l.title?.toLowerCase().includes(linkSearch.toLowerCase()));
+  // Dynamic Filtering, Sorting, and Pagination
+  const processedLinks = links.filter(l => {
+    const matchesSearch = l.title?.toLowerCase().includes(linkSearch.toLowerCase());
+    const matchesCategory = filterCategory === 'all' || l.category === filterCategory;
+    return matchesSearch && matchesCategory;
+  }).sort((a, b) => {
+    switch (sortOption) {
+      case 'newest': return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+      case 'oldest': return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0);
+      case 'title_asc': return (a.title || '').localeCompare(b.title || '');
+      case 'title_desc': return (b.title || '').localeCompare(a.title || '');
+      case 'clicks_desc': return (b.clicks || 0) - (a.clicks || 0);
+      default: return 0;
+    }
+  });
+
+  const totalPages = Math.ceil(processedLinks.length / itemsPerPage);
+  
+  // Reset page safely if filters out-bound the active page
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) setCurrentPage(totalPages);
+  }, [processedLinks.length, currentPage, totalPages]);
+
+  const paginatedLinks = processedLinks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -302,19 +338,50 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              <div className="relative mb-6">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Search existing links..."
-                  className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  value={linkSearch}
-                  onChange={e => setLinkSearch(e.target.value)}
-                />
+              <div className="flex flex-col xl:flex-row gap-3 mb-6">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Search existing links..."
+                    className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    value={linkSearch}
+                    onChange={e => { setLinkSearch(e.target.value); setCurrentPage(1); }}
+                  />
+                </div>
+                
+                <div className="flex gap-2 shrink-0 overflow-x-auto pb-1 xl:pb-0 scrollbar-hide">
+                  <div className="relative flex items-center bg-gray-50 border border-gray-200 rounded-lg shrink-0">
+                    <SlidersHorizontal className="w-4 h-4 text-slate-400 ml-3 shrink-0" />
+                    <select 
+                      className="pl-2 pr-8 py-2 bg-transparent text-sm text-slate-600 focus:outline-none font-medium appearance-none"
+                      value={filterCategory}
+                      onChange={e => { setFilterCategory(e.target.value); setCurrentPage(1); }}
+                    >
+                      <option value="all">All Categories</option>
+                      {categoryOptions.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                    </select>
+                  </div>
+                  
+                  <div className="relative flex items-center bg-gray-50 border border-gray-200 rounded-lg shrink-0">
+                    <ArrowUpDown className="w-4 h-4 text-slate-400 ml-3 shrink-0" />
+                    <select 
+                      className="pl-2 pr-8 py-2 bg-transparent text-sm text-slate-600 focus:outline-none font-medium appearance-none"
+                      value={sortOption}
+                      onChange={e => { setSortOption(e.target.value); setCurrentPage(1); }}
+                    >
+                      <option value="newest">Newest First</option>
+                      <option value="oldest">Oldest First</option>
+                      <option value="title_asc">Title (A-Z)</option>
+                      <option value="title_desc">Title (Z-A)</option>
+                      <option value="clicks_desc">Most Clicks</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-3">
-                {filteredLinks.map(link => (
+                {paginatedLinks.map(link => (
                   <div key={link.id} className="p-4 border border-gray-100 rounded-xl hover:border-gray-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all flex items-center gap-4 bg-white relative group">
                     <div className="w-16 h-16 bg-slate-50 rounded-lg shrink-0 overflow-hidden border border-gray-100 flex items-center justify-center">
                       {link.thumbnailUrl ? (
@@ -336,10 +403,19 @@ export default function Dashboard() {
                     <div className="flex flex-col items-end gap-2 shrink-0">
                       {/* Toggle */}
                       <button
-                        onClick={() => updateLink(link.id, { isVisible: !link.isVisible })}
-                        className={clsx("w-10 h-5 rounded-full relative transition-colors", link.isVisible ? "bg-green-500" : "bg-gray-300")}
+                        onClick={async () => {
+                          await updateLink(link.id, { isVisible: !link.isVisible });
+                          showToast(`Link ${!link.isVisible ? 'published' : 'hidden'}!`);
+                        }}
+                        className={clsx("w-11 h-6 rounded-full flex p-0.5 transition-colors duration-300 focus:outline-none", link.isVisible ? "bg-emerald-500" : "bg-slate-200")}
                       >
-                        <div className={clsx("w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 transition-all shadow-sm", link.isVisible ? "left-6" : "left-0.5")} />
+                        <div className={clsx("w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-sm transition-transform duration-300", link.isVisible ? "translate-x-5" : "translate-x-0")}>
+                          {link.isVisible ? (
+                            <div className="w-0.5 h-2.5 bg-emerald-500 rounded-full" />
+                          ) : (
+                            <div className="w-2 h-2 border-2 border-slate-300 rounded-full" />
+                          )}
+                        </div>
                       </button>
 
                       <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
@@ -368,12 +444,51 @@ export default function Dashboard() {
                     </div>
                   </div>
                 ))}
-                {filteredLinks.length === 0 && (
+                {processedLinks.length === 0 && (
                   <div className="py-12 text-center text-slate-400 text-sm">
-                    No links found. Create one!
+                    No links found matching your filters.
                   </div>
                 )}
               </div>
+
+              {/* Pagination Controls */}
+              {processedLinks.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 text-sm text-slate-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 shrink-0">
+                    <span>Show:</span>
+                    <select 
+                      className="bg-transparent focus:outline-none font-semibold text-slate-700"
+                      value={itemsPerPage}
+                      onChange={e => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
+                  
+                  <div className="flex items-center gap-1">
+                    <button 
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="p-1.5 rounded-lg border border-gray-200 text-slate-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-sm font-medium text-slate-600 px-3">
+                      Page {currentPage} of {totalPages || 1}
+                    </span>
+                    <button 
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages || totalPages === 0}
+                      className="p-1.5 rounded-lg border border-gray-200 text-slate-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -388,13 +503,13 @@ export default function Dashboard() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredLinks.map(link => (
+                {paginatedLinks.map(link => (
                   <div key={link.id} className="p-5 border border-gray-100 rounded-xl hover:border-blue-100 hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all bg-white relative group flex flex-col justify-between h-48">
                     <div>
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-md">
-                          <Scissors className="w-3.5 h-3.5" />
-                          <span className="text-xs font-bold font-mono tracking-wide">arfimaulana.com/l/{link.shortCode}</span>
+                      <div className="flex justify-between items-center mb-2 gap-2">
+                        <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-md min-w-0 flex-1">
+                          <Scissors className="w-3.5 h-3.5 shrink-0" />
+                          <span className="text-xs font-bold font-mono tracking-wide truncate mt-0.5">arfimaulana.com/l/{link.shortCode}</span>
                         </div>
                         <button
                           className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"
@@ -429,12 +544,51 @@ export default function Dashboard() {
                     </div>
                   </div>
                 ))}
-                {filteredLinks.length === 0 && (
+                {processedLinks.length === 0 && (
                   <div className="col-span-full py-16 text-center text-slate-400 text-sm bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                    No short links available.
+                    No short links available matching your filters.
                   </div>
                 )}
               </div>
+
+              {/* Pagination Controls for Shortener */}
+              {processedLinks.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 text-sm text-slate-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 shrink-0">
+                    <span>Show:</span>
+                    <select 
+                      className="bg-transparent focus:outline-none font-semibold text-slate-700"
+                      value={itemsPerPage}
+                      onChange={e => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
+                  
+                  <div className="flex items-center gap-1">
+                    <button 
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="p-1.5 rounded-lg border border-gray-200 text-slate-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-sm font-medium text-slate-600 px-3">
+                      Page {currentPage} of {totalPages || 1}
+                    </span>
+                    <button 
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages || totalPages === 0}
+                      className="p-1.5 rounded-lg border border-gray-200 text-slate-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -475,7 +629,7 @@ export default function Dashboard() {
 
       {/* Toast Notification */}
       <Transition
-        show={showProfileToast}
+        show={toast.show}
         enter="transition-all duration-300 ease-out"
         enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:translate-x-full"
         enterTo="opacity-100 translate-y-0 sm:translate-x-0"
@@ -490,9 +644,9 @@ export default function Dashboard() {
               <Check className="w-4 h-4 text-white" strokeWidth={3} />
             </div>
           </div>
-          <p className="font-bold text-slate-800 flex-1">Profile saved!</p>
+          <p className="font-bold text-slate-800 flex-1">{toast.message}</p>
           <button
-            onClick={() => setShowProfileToast(false)}
+            onClick={() => setToast(prev => ({ ...prev, show: false }))}
             className="w-7 h-7 border border-gray-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-gray-50 transition-colors shrink-0"
           >
             <X className="w-4 h-4" />
@@ -650,9 +804,10 @@ export default function Dashboard() {
               </button>
               <button
                 className="flex-1 py-3 text-sm font-semibold text-white bg-[#dc2626] rounded-full hover:bg-[#b91c1c] transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-                onClick={() => {
+                onClick={async () => {
                   if (linkToDelete) {
-                    deleteLinkItem(linkToDelete.id);
+                    await deleteLinkItem(linkToDelete.id);
+                    showToast('Link deleted!');
                   }
                   setLinkToDelete(null);
                 }}
