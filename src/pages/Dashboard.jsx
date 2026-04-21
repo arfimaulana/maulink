@@ -77,6 +77,7 @@ export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLink, setEditingLink] = useState(null);
   const [linkToDelete, setLinkToDelete] = useState(null);
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [linkForm, setLinkForm] = useState({
     title: '', url: '', price: '', currency: 'USD', category: '', isVisible: true, thumbnailUrl: '', shortCode: ''
   });
@@ -95,7 +96,8 @@ export default function Dashboard() {
         name: profile.name || '',
         subLabel: profile.subLabel || '',
         avatarUrl: profile.avatarUrl || '',
-        socials: profile.socials || { instagram: '', facebook: '', x: '', linkedin: '' }
+        socials: profile.socials || { instagram: '', facebook: '', x: '', linkedin: '' },
+        socialsOrder: profile.socialsOrder || null
       });
     }
   }, [profile]);
@@ -173,6 +175,21 @@ export default function Dashboard() {
 
   const categoryOptions = [...new Set(links.map(l => l.category).filter(Boolean))].map(c => ({ label: c, value: c }));
 
+  const executeDeleteCategory = async (categoryToDel) => {
+    setSavingLink(true);
+    try {
+      const linksToUpdate = links.filter(l => l.category === categoryToDel);
+      await Promise.all(linksToUpdate.map(link => updateLink(link.id, { category: '' })));
+      setLinkForm(prev => ({ ...prev, category: '' }));
+      showToast('Category deleted successfully!');
+    } catch (err) {
+      alert('Failed to delete category');
+      console.error(err);
+    } finally {
+      setSavingLink(false);
+    }
+  };
+
   // Dynamic Filtering, Sorting, and Pagination
   const processedLinks = links.filter(l => {
     const matchesSearch = l.title?.toLowerCase().includes(linkSearch.toLowerCase());
@@ -197,6 +214,42 @@ export default function Dashboard() {
   }, [processedLinks.length, currentPage, totalPages]);
 
   const paginatedLinks = processedLinks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const AVAILABLE_SOCIALS = ['instagram', 'facebook', 'x', 'linkedin', 'tiktok', 'youtube', 'github', 'twitch', 'discord', 'telegram', 'whatsapp'];
+  const defaultSocialsOrder = Object.keys(profileForm.socials || {}).filter(k => profileForm.socials[k] !== undefined && profileForm.socials[k] !== null);
+  const activeSocials = (profileForm.socialsOrder || defaultSocialsOrder).filter(k => profileForm.socials[k] !== undefined && profileForm.socials[k] !== null);
+  const unselectedSocials = AVAILABLE_SOCIALS.filter(s => !activeSocials.includes(s));
+
+  const GripVerticalIcon = ({ className }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1.5"></circle><circle cx="9" cy="5" r="1.5"></circle><circle cx="9" cy="19" r="1.5"></circle><circle cx="15" cy="12" r="1.5"></circle><circle cx="15" cy="5" r="1.5"></circle><circle cx="15" cy="19" r="1.5"></circle></svg>);
+
+  const InstagramIcon = ({ className }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>);
+  const FacebookIcon = ({ className }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>);
+  const TwitterIcon = ({ className }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path></svg>);
+  const LinkedinIcon = ({ className }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>);
+  const YoutubeIcon = ({ className }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>);
+  const GithubIcon = ({ className }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>);
+  const TiktokIcon = ({ className }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5v3a3 3 0 0 1-3-3v11a7 7 0 1 1-7-7v3"></path></svg>);
+  const TwitchIcon = ({ className }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zm-10 9V7m5 4V7"></path></svg>);
+  const DiscordIcon = ({ className }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1.5"></circle><circle cx="15" cy="12" r="1.5"></circle><path d="M7.5 7.5c3.5-1 5.5-1 9 0M7 16.5c-2.9-2-2.9-7-2.9-7C5.9 7.6 7.5 7 7.5 7m9.5 9.5c2.9-2 2.9-7 2.9-7C18.1 7.6 16.5 7 16.5 7"></path></svg>);
+  const TelegramIcon = ({ className }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>);
+  const WhatsappIcon = ({ className }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>);
+
+  const getSocialIcon = (net, className="w-4 h-4 shrink-0 text-slate-400") => {
+    switch(net.toLowerCase()) {
+      case 'instagram': return <InstagramIcon className={className} />;
+      case 'facebook': return <FacebookIcon className={className} />;
+      case 'x': return <TwitterIcon className={className} />;
+      case 'linkedin': return <LinkedinIcon className={className} />;
+      case 'youtube': return <YoutubeIcon className={className} />;
+      case 'tiktok': return <TiktokIcon className={className} />;
+      case 'twitch': return <TwitchIcon className={className} />;
+      case 'github': return <GithubIcon className={className} />;
+      case 'discord': return <DiscordIcon className={className} />;
+      case 'telegram': return <TelegramIcon className={className} />;
+      case 'whatsapp': return <WhatsappIcon className={className} />;
+      default: return <LinkIcon className={className} />;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -292,23 +345,98 @@ export default function Dashboard() {
 
                 <div className="pt-4 border-t border-gray-100">
                   <label className="block text-xs font-medium text-slate-800 mb-3 uppercase tracking-wider">Socials</label>
-                  {['instagram', 'facebook', 'x', 'linkedin'].map(net => (
-                    <div key={net} className="flex flex-col mb-3">
-                      <div className="flex border border-gray-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500">
-                        <span className="bg-gray-50 px-3 py-2 text-xs text-slate-500 border-r border-gray-200 flex items-center min-w-[100px]">
-                          {net}.com/
+                  {activeSocials.map((net, index) => (
+                    <div 
+                      key={net} 
+                      className="flex items-center gap-2 mb-3"
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', index.toString());
+                        e.currentTarget.style.opacity = '0.5';
+                      }}
+                      onDragEnd={(e) => {
+                        e.currentTarget.style.opacity = '1';
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                        const toIndex = index;
+                        if (fromIndex === toIndex || isNaN(fromIndex)) return;
+                        
+                        const newOrder = [...activeSocials];
+                        const [movedItem] = newOrder.splice(fromIndex, 1);
+                        newOrder.splice(toIndex, 0, movedItem);
+                        
+                        setProfileForm({
+                          ...profileForm,
+                          socialsOrder: newOrder
+                        });
+                      }}
+                    >
+                      <div className="flex flex-1 border border-gray-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 bg-gray-50 transition-shadow">
+                        <div className="flex items-center px-1.5 cursor-grab active:cursor-grabbing border-r border-gray-100 hover:bg-gray-200 transition-colors bg-white">
+                          <GripVerticalIcon className="w-4 h-4 text-slate-300" />
+                        </div>
+                        <span className="bg-gray-50 px-3 py-2 text-slate-400 border-r border-gray-200 flex items-center justify-center min-w-[50px]">
+                          {getSocialIcon(net, "w-5 h-5")}
                         </span>
-                        <input type="text" className="flex-1 px-3 py-2 text-sm focus:outline-none"
-                          placeholder="username or link"
-                          value={profileForm.socials[net]}
+                        <input type="text" className="flex-1 px-3 py-2 text-sm focus:outline-none bg-white font-medium"
+                          placeholder={`https://www.${net}.com/username`}
+                          value={profileForm.socials[net] || ''}
                           onChange={e => setProfileForm({
                             ...profileForm,
                             socials: { ...profileForm.socials, [net]: e.target.value }
                           })}
                         />
                       </div>
+                      <button 
+                        onClick={() => {
+                          const newSocials = { ...profileForm.socials };
+                          newSocials[net] = null;
+                          const newOrder = activeSocials.filter(k => k !== net);
+                          setProfileForm({ ...profileForm, socials: newSocials, socialsOrder: newOrder });
+                        }}
+                        className="p-2 text-slate-400 hover:text-red-500 transition-colors shrink-0"
+                        title="Remove social link"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
                     </div>
                   ))}
+
+                  {unselectedSocials.length > 0 && (
+                    <div className="mt-4 border-t border-gray-100 pt-3">
+                      <Select
+                        options={unselectedSocials.map(s => ({ label: s, value: s }))}
+                        value={null}
+                        placeholder="+ Add social link"
+                        onChange={v => {
+                          if (v) {
+                            const newOrder = [...activeSocials];
+                            if (!newOrder.includes(v.value)) newOrder.push(v.value);
+                            setProfileForm({
+                              ...profileForm,
+                              socials: { ...(profileForm.socials || {}), [v.value]: '' },
+                              socialsOrder: newOrder
+                            });
+                          }
+                        }}
+                        formatOptionLabel={({ label }) => (
+                          <div className="flex items-center gap-3">
+                            {getSocialIcon(label, "w-4 h-4 text-slate-500")}
+                            <span className="lowercase font-medium text-slate-700">{label}</span>
+                          </div>
+                        )}
+                        className="react-select-container text-sm"
+                        classNamePrefix="react-select"
+                        isSearchable={false}
+                        menuPlacement="auto"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-4 flex gap-2">
@@ -330,6 +458,36 @@ export default function Dashboard() {
 
           {/* Links Section (Right Column) */}
           <div className={clsx("lg:col-span-8", activeTab === 'links' ? "block" : "hidden")}>
+            
+            {/* My Link Banner */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-col sm:flex-row gap-4 items-center">
+              <div className="flex-1 w-full flex items-center border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-500">
+                <div className="px-4 py-3 bg-gray-50 text-slate-500 text-sm font-medium border-r border-gray-200 shrink-0">
+                  My Link
+                </div>
+                <div className="flex-1 px-4 py-3 text-sm font-medium text-slate-800 flex items-center justify-between bg-white relative overflow-hidden">
+                  <span className="truncate pr-4">arfimaulana.com/</span>
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(`arfimaulana.com/`);
+                      showToast('Profile link copied!');
+                    }}
+                    className="text-slate-400 hover:text-slate-600 shrink-0 bg-white"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <a 
+                href="/" 
+                target="_blank" 
+                rel="noreferrer" 
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-xl transition-colors shrink-0 shadow-sm"
+              >
+                <ExternalLink className="w-4 h-4" /> Go to link
+              </a>
+            </div>
+
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 min-h-[500px]">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
                 <h2 className="text-lg font-bold text-slate-800">Your Links</h2>
@@ -756,7 +914,18 @@ export default function Dashboard() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-slate-700">Category</label>
+                  {linkForm.category && categoryOptions.find(c => c.value === linkForm.category) && (
+                    <button 
+                      onClick={(e) => { e.preventDefault(); setCategoryToDelete(linkForm.category); }}
+                      disabled={savingLink}
+                      className="text-xs font-semibold text-red-500 hover:text-red-700 hover:underline"
+                    >
+                      Delete "{linkForm.category}"
+                    </button>
+                  )}
+                </div>
                 <CreatableSelect
                   isClearable
                   options={categoryOptions}
@@ -810,6 +979,41 @@ export default function Dashboard() {
                     showToast('Link deleted!');
                   }
                   setLinkToDelete(null);
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
+      
+      {/* Delete Category Confirmation Modal */}
+      <Dialog open={!!categoryToDelete} onClose={() => setCategoryToDelete(null)} className="relative z-[60]">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden p-6 sm:p-8">
+            <Dialog.Title className="text-xl font-bold text-slate-900 mb-4">
+              Delete Category
+            </Dialog.Title>
+            <p className="text-sm text-slate-600 mb-8 leading-relaxed">
+              Are you sure you want to delete the '{categoryToDelete}' category? <br />
+              This will safely remove the category label from every link that uses it.
+            </p>
+            <div className="flex gap-4">
+              <button
+                className="flex-1 py-3 text-sm font-semibold text-slate-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200"
+                onClick={() => setCategoryToDelete(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="flex-1 py-3 text-sm font-semibold text-white bg-[#dc2626] rounded-full hover:bg-[#b91c1c] transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                onClick={async () => {
+                  if (categoryToDelete) {
+                    await executeDeleteCategory(categoryToDelete);
+                  }
+                  setCategoryToDelete(null);
                 }}
               >
                 Delete
