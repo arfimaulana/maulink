@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
-import { Search, ArrowUpRight, Link2 } from 'lucide-react';
+import { Search, ArrowUpRight, Link2, ArrowUpDown, LayoutGrid, List } from 'lucide-react';
+import Select from 'react-select';
 import clsx from 'clsx';
 
 const InstagramIcon = ({ className }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>);
@@ -27,6 +28,8 @@ export default function PublicPage() {
   const { profile, links, loading, setPublicUserId } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [sortOption, setSortOption] = useState('newest');
+  const [viewLayout, setViewLayout] = useState('grid'); // 'grid' or 'list'
 
   useEffect(() => {
     if (userId) {
@@ -48,11 +51,20 @@ export default function PublicPage() {
   const visibleLinks = links.filter(link => link.isVisible);
   const availableCategories = ['All', ...new Set(visibleLinks.map(l => l.category).filter(Boolean))];
 
-  const filteredLinks = visibleLinks.filter(link => {
-    let matchesCategory = selectedCategory === 'All' || link.category === selectedCategory;
-    let matchesSearch = !searchTerm || link.title?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const filteredLinks = visibleLinks
+    .filter(link => {
+      let matchesCategory = selectedCategory === 'All' || link.category === selectedCategory;
+      let matchesSearch = !searchTerm || link.title?.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesCategory && matchesSearch;
+    })
+    .sort((a, b) => {
+      if (sortOption === 'newest') return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+      if (sortOption === 'oldest') return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0);
+      if (sortOption === 'price_low') return (parseFloat(a.price) || 0) - (parseFloat(b.price) || 0);
+      if (sortOption === 'price_high') return (parseFloat(b.price) || 0) - (parseFloat(a.price) || 0);
+      if (sortOption === 'az') return (a.title || '').localeCompare(b.title || '');
+      return 0;
+    });
 
   return (
     <div className="min-h-screen bg-gray-50 text-slate-800">
@@ -103,15 +115,106 @@ export default function PublicPage() {
 
         {/* Search & Filter */}
         <div className="mb-8 space-y-4">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-            <input 
-              type="text" 
-              placeholder="Search products..."
-              className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-gray-200 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-sm transition-all"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <input 
+                type="text" 
+                placeholder="Search products..."
+                className="w-full pl-11 pr-4 py-2 rounded-lg border border-gray-200 bg-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all text-sm"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="relative w-full sm:w-[180px] z-20">
+                <Select
+                  options={[
+                    { label: 'Newest First', value: 'newest' },
+                    { label: 'Oldest First', value: 'oldest' },
+                    { label: 'Lowest Price', value: 'price_low' },
+                    { label: 'Highest Price', value: 'price_high' },
+                    { label: 'A-Z', value: 'az' }
+                  ]}
+                  value={{ 
+                    label: {
+                      newest: 'Newest First',
+                      oldest: 'Oldest First',
+                      price_low: 'Lowest Price',
+                      price_high: 'Highest Price',
+                      az: 'A-Z'
+                    }[sortOption], 
+                    value: sortOption 
+                  }}
+                  onChange={v => setSortOption(v ? v.value : 'newest')}
+                  className="react-select-container text-sm"
+                  classNamePrefix="react-select"
+                  isSearchable={false}
+                  styles={{
+                    control: (base, state) => ({
+                      ...base,
+                      borderRadius: '8px',
+                      borderColor: state.isFocused ? '#2563eb' : '#e2e8f0',
+                      boxShadow: 'none',
+                      '&:hover': {
+                        borderColor: '#2563eb'
+                      },
+                      minHeight: '40px',
+                      height: '40px'
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected ? '#2563eb' : state.isFocused ? '#eff6ff' : 'white',
+                      color: state.isSelected ? 'white' : '#475569',
+                      fontWeight: state.isSelected ? '600' : '500',
+                      cursor: 'pointer',
+                      '&:active': {
+                        backgroundColor: state.isSelected ? '#2563eb' : '#dbeafe'
+                      }
+                    }),
+                    valueContainer: (base) => ({
+                      ...base,
+                      padding: '0 8px'
+                    }),
+                    singleValue: (base) => ({
+                      ...base,
+                      color: '#475569',
+                      fontWeight: '500'
+                    })
+                  }}
+                  formatOptionLabel={({ label }) => (
+                    <div className="flex items-center gap-2">
+                      <ArrowUpDown className="w-3.5 h-3.5 opacity-70" />
+                      <span className="font-medium truncate">{label}</span>
+                    </div>
+                  )}
+                />
+              </div>
+
+              <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm shrink-0 h-[40px] items-center">
+                <button 
+                  onClick={() => setViewLayout('grid')}
+                  className={clsx(
+                    "p-1.5 rounded transition-all",
+                    viewLayout === 'grid' ? "bg-slate-800 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+                  )}
+                  title="Grid View"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => setViewLayout('list')}
+                  className={clsx(
+                    "p-1.5 rounded transition-all",
+                    viewLayout === 'list' ? "bg-slate-800 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+                  )}
+                  title="List View"
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           </div>
           
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -133,46 +236,81 @@ export default function PublicPage() {
         </div>
 
         {/* Links Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className={clsx(
+          "grid gap-4 transition-all duration-300",
+          viewLayout === 'grid' ? "grid-cols-2 md:grid-cols-3" : "grid-cols-1"
+        )}>
           {filteredLinks.map(link => (
             <a 
               key={link.id} 
               href={link.url} 
               target="_blank" 
               rel="noreferrer"
-              className="group flex flex-col sm:flex-row bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100 overflow-hidden hover:shadow-md transition-all hover:-translate-y-0.5 relative"
+              className={clsx(
+                "group bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100 overflow-hidden hover:shadow-md transition-all hover:-translate-y-0.5 relative flex",
+                viewLayout === 'grid' ? "flex-col" : "flex-row items-center p-2"
+              )}
             >
-              {link.category && (
-                <div className="absolute top-3 left-3 z-10 bg-white/95 backdrop-blur text-xs font-bold tracking-wide px-2 py-1 rounded-md text-slate-700 shadow-sm">
+              {link.category && viewLayout === 'grid' && (
+                <div className="absolute top-2 left-2 z-10 bg-white/95 backdrop-blur text-[10px] font-bold tracking-wide px-1.5 py-0.5 rounded text-slate-700 shadow-sm">
                   {link.category}
                 </div>
               )}
               
-              <div className="w-full h-[250px] sm:h-auto sm:w-32 sm:aspect-square bg-slate-50 relative shrink-0">
+              <div className={clsx(
+                "relative shrink-0 overflow-hidden",
+                viewLayout === 'grid' ? "w-full aspect-[4/3] bg-slate-50" : "w-16 h-16 sm:w-24 sm:h-24 rounded-xl"
+              )}>
                 {link.thumbnailUrl ? (
                   <img src={link.thumbnailUrl} alt={link.title} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50">
-                    <ArrowUpRight className="w-6 h-6 opacity-30" />
+                    <ArrowUpRight className={clsx(viewLayout === 'grid' ? "w-6 h-6" : "w-4 h-4", "opacity-30")} />
                   </div>
                 )}
               </div>
 
-              <div className="p-4 flex flex-col justify-between flex-1">
-                <h3 className="font-bold text-slate-800 text-lg sm:font-semibold sm:text-base line-clamp-2 leading-tight pr-6">
-                  {link.title}
-                </h3>
-                <div className="mt-4 flex items-end justify-between">
+              <div className={clsx(
+                "flex flex-col justify-between flex-1",
+                viewLayout === 'grid' ? "p-4" : "pl-3 pr-1"
+              )}>
+                <div className="space-y-1.5">
+                  {link.category && viewLayout === 'list' && (
+                    <span className="inline-block px-1.5 py-0.5 rounded bg-gray-100 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      {link.category}
+                    </span>
+                  )}
+                  <h3 className={clsx(
+                    "font-bold text-slate-800 leading-tight pr-4",
+                    viewLayout === 'grid' ? "text-sm sm:text-base line-clamp-2" : "text-sm sm:text-base line-clamp-1"
+                  )}>
+                    {link.title}
+                  </h3>
+                </div>
+
+                <div className={clsx(
+                  "flex items-end justify-between",
+                  viewLayout === 'grid' ? "mt-3" : "mt-1"
+                )}>
                   {link.price ? (
-                    <span className="font-bold text-slate-700 text-sm">
+                    <span className="font-bold text-slate-700 text-[11px] sm:text-xs">
                       {link.currency || '$'} {Number(link.price).toLocaleString()}
                     </span>
-                  ) : <div></div>}
-                  <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
-                    <ArrowUpRight className="w-4 h-4" />
-                  </div>
+                  ) : <div />}
+                  
+                  {viewLayout === 'grid' && (
+                    <div className="w-7 h-7 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </div>
+                  )}
                 </div>
               </div>
+              
+              {viewLayout === 'list' && (
+                <div className="pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                   <ArrowUpRight className="w-4 h-4 text-slate-400" />
+                </div>
+              )}
             </a>
           ))}
           {filteredLinks.length === 0 && (
