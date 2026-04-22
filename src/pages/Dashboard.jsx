@@ -3,7 +3,7 @@ import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { LogOut, Plus, Search, Image as ImageIcon, Copy, Edit2, Trash2, Link as LinkIcon, Settings, LayoutDashboard, Check, X, User, Scissors, ExternalLink, Activity, ChevronLeft, ChevronRight, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { LogOut, Plus, Search, Image as ImageIcon, Copy, Edit2, Trash2, Link as LinkIcon, Settings, LayoutDashboard, Check, X, User, Scissors, ExternalLink, Activity, ChevronLeft, ChevronRight, SlidersHorizontal, ArrowUpDown, Filter } from 'lucide-react';
 import CreatableSelect from 'react-select/creatable';
 import Select from 'react-select';
 import { Dialog, Transition } from '@headlessui/react';
@@ -459,13 +459,12 @@ export default function Dashboard() {
           {/* Links Section (Right Column) */}
           <div className={clsx("lg:col-span-8", activeTab === 'links' ? "block" : "hidden")}>
             
-            {/* My Link Banner */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-col sm:flex-row gap-4 items-center">
-              <div className="flex-1 w-full flex items-center border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-500">
-                <div className="px-4 py-3 bg-gray-50 text-slate-500 text-sm font-medium border-r border-gray-200 shrink-0">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 mb-6 flex flex-col sm:flex-row gap-3 items-center">
+              <div className="flex-1 w-full flex items-center border border-gray-200 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-blue-500">
+                <div className="px-3 py-2 bg-gray-50 text-slate-500 text-xs font-semibold border-r border-gray-200 shrink-0">
                   My Link
                 </div>
-                <div className="flex-1 px-4 py-3 text-sm font-medium text-slate-800 flex items-center justify-between bg-white relative overflow-hidden">
+                <div className="flex-1 px-3 py-2 text-sm font-medium text-slate-800 flex items-center justify-between bg-white relative overflow-hidden">
                   <span className="truncate pr-4">arfimaulana.com/</span>
                   <button 
                     onClick={() => {
@@ -482,16 +481,16 @@ export default function Dashboard() {
                 href="/" 
                 target="_blank" 
                 rel="noreferrer" 
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-xl transition-colors shrink-0 shadow-sm"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg transition-colors shrink-0 shadow-sm"
               >
                 <ExternalLink className="w-4 h-4" /> Go to link
               </a>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 min-h-[500px]">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+              <div className="flex items-center justify-between mb-6 gap-4">
                 <h2 className="text-lg font-bold text-slate-800">Your Links</h2>
-                <button onClick={() => openLinkModal()} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                <button onClick={() => openLinkModal()} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition shrink-0">
                   <Plus className="w-4 h-4" /> Add Link
                 </button>
               </div>
@@ -508,32 +507,101 @@ export default function Dashboard() {
                   />
                 </div>
                 
-                <div className="flex gap-2 shrink-0 overflow-x-auto pb-1 xl:pb-0 scrollbar-hide">
-                  <div className="relative flex items-center bg-gray-50 border border-gray-200 rounded-lg shrink-0">
-                    <SlidersHorizontal className="w-4 h-4 text-slate-400 ml-3 shrink-0" />
-                    <select 
-                      className="pl-2 pr-8 py-2 bg-transparent text-sm text-slate-600 focus:outline-none font-medium appearance-none"
-                      value={filterCategory}
-                      onChange={e => { setFilterCategory(e.target.value); setCurrentPage(1); }}
-                    >
-                      <option value="all">All Categories</option>
-                      {categoryOptions.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                    </select>
+                <div className="flex items-center gap-2 shrink-0 w-full xl:w-auto">
+                  <div className="flex-1 sm:w-[160px] z-20">
+                    <Select
+                      options={[{ label: 'All Categories', value: 'all' }, ...categoryOptions]}
+                      value={{ 
+                        label: filterCategory === 'all' ? 'All Categories' : filterCategory, 
+                        value: filterCategory 
+                      }}
+                      onChange={v => { setFilterCategory(v ? v.value : 'all'); setCurrentPage(1); }}
+                      menuPortalTarget={document.body}
+                      className="react-select-container text-sm"
+                      classNamePrefix="react-select"
+                      isSearchable={false}
+                      styles={{
+                        control: (base, state) => ({
+                          ...base,
+                          borderRadius: '8px',
+                          borderColor: state.isFocused ? '#2563eb' : '#e2e8f0',
+                          boxShadow: 'none',
+                          '&:hover': { borderColor: '#2563eb' },
+                          minHeight: '38px',
+                          height: '38px'
+                        }),
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isSelected ? '#2563eb' : state.isFocused ? '#eff6ff' : 'white',
+                          color: state.isSelected ? 'white' : '#475569',
+                          fontWeight: state.isSelected ? '600' : '500',
+                          cursor: 'pointer',
+                          '&:active': { backgroundColor: state.isSelected ? '#2563eb' : '#dbeafe' }
+                        }),
+                        singleValue: (base) => ({ ...base, color: '#475569', fontWeight: '500' }),
+                        menuPortal: base => ({ ...base, zIndex: 9999 })
+                      }}
+                      formatOptionLabel={({ label }) => (
+                        <div className="flex items-center gap-2">
+                          <Filter className="w-3.5 h-3.5 text-slate-400" />
+                          <span className="truncate">{label}</span>
+                        </div>
+                      )}
+                    />
                   </div>
                   
-                  <div className="relative flex items-center bg-gray-50 border border-gray-200 rounded-lg shrink-0">
-                    <ArrowUpDown className="w-4 h-4 text-slate-400 ml-3 shrink-0" />
-                    <select 
-                      className="pl-2 pr-8 py-2 bg-transparent text-sm text-slate-600 focus:outline-none font-medium appearance-none"
-                      value={sortOption}
-                      onChange={e => { setSortOption(e.target.value); setCurrentPage(1); }}
-                    >
-                      <option value="newest">Newest First</option>
-                      <option value="oldest">Oldest First</option>
-                      <option value="title_asc">Title (A-Z)</option>
-                      <option value="title_desc">Title (Z-A)</option>
-                      <option value="clicks_desc">Most Clicks</option>
-                    </select>
+                  <div className="flex-1 sm:w-[160px] z-20">
+                    <Select
+                      options={[
+                        { label: 'Newest First', value: 'newest' },
+                        { label: 'Oldest First', value: 'oldest' },
+                        { label: 'Title (A-Z)', value: 'title_asc' },
+                        { label: 'Title (Z-A)', value: 'title_desc' },
+                        { label: 'Most Clicks', value: 'clicks_desc' }
+                      ]}
+                      value={{ 
+                        label: {
+                          newest: 'Newest First',
+                          oldest: 'Oldest First',
+                          title_asc: 'Title (A-Z)',
+                          title_desc: 'Title (Z-A)',
+                          clicks_desc: 'Most Clicks'
+                        }[sortOption], 
+                        value: sortOption 
+                      }}
+                      onChange={v => { setSortOption(v ? v.value : 'newest'); setCurrentPage(1); }}
+                      menuPortalTarget={document.body}
+                      className="react-select-container text-sm"
+                      classNamePrefix="react-select"
+                      isSearchable={false}
+                      styles={{
+                        control: (base, state) => ({
+                          ...base,
+                          borderRadius: '8px',
+                          borderColor: state.isFocused ? '#2563eb' : '#e2e8f0',
+                          boxShadow: 'none',
+                          '&:hover': { borderColor: '#2563eb' },
+                          minHeight: '38px',
+                          height: '38px'
+                        }),
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isSelected ? '#2563eb' : state.isFocused ? '#eff6ff' : 'white',
+                          color: state.isSelected ? 'white' : '#475569',
+                          fontWeight: state.isSelected ? '600' : '500',
+                          cursor: 'pointer',
+                          '&:active': { backgroundColor: state.isSelected ? '#2563eb' : '#dbeafe' }
+                        }),
+                        singleValue: (base) => ({ ...base, color: '#475569', fontWeight: '500' }),
+                        menuPortal: base => ({ ...base, zIndex: 9999 })
+                      }}
+                      formatOptionLabel={({ label }) => (
+                        <div className="flex items-center gap-2">
+                          <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                          <span className="truncate">{label}</span>
+                        </div>
+                      )}
+                    />
                   </div>
                 </div>
               </div>
@@ -555,7 +623,7 @@ export default function Dashboard() {
                       <a href={link.url} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline flex items-center gap-1 mb-1 truncate">
                         <LinkIcon className="w-3 h-3" /> {link.url}
                       </a>
-                      {link.price && <div className="text-xs font-semibold text-slate-500">{link.currency} {link.price}</div>}
+                      {link.price && <div className="text-xs font-semibold text-slate-500">{link.currency} {Number(link.price).toLocaleString()}</div>}
                     </div>
 
                     <div className="flex flex-col items-end gap-2 shrink-0">

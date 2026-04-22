@@ -271,12 +271,12 @@ export default function PublicPage() {
               </div>
 
               <div className={clsx(
-                "flex flex-col justify-between flex-1",
-                viewLayout === 'grid' ? "p-4" : "pl-3 pr-1"
+                "flex flex-col flex-1",
+                viewLayout === 'grid' ? "p-4 justify-between" : "pl-3 pr-1 justify-center"
               )}>
-                <div className="space-y-1.5">
+                <div className="space-y-2.5">
                   {link.category && viewLayout === 'list' && (
-                    <span className="inline-block px-1.5 py-0.5 rounded bg-gray-100 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    <span className="inline-block px-1.5 py-0.5 rounded bg-gray-100 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
                       {link.category}
                     </span>
                   )}
@@ -290,7 +290,7 @@ export default function PublicPage() {
 
                 <div className={clsx(
                   "flex items-end justify-between",
-                  viewLayout === 'grid' ? "mt-3" : "mt-1"
+                  viewLayout === 'grid' ? "mt-3" : "mt-0.5"
                 )}>
                   {link.price ? (
                     <span className="font-bold text-slate-700 text-[11px] sm:text-xs">
