@@ -22,21 +22,22 @@ export function DataProvider({ children }) {
   const activeUserId = publicUserId || currentUser?.uid;
 
   useEffect(() => {
-    let unsubscribeProfile = () => {};
-    let unsubscribeLinks = () => {};
+    let unsubProfile = null;
+    let unsubLinks = null;
+    let isMounted = true;
 
     const loadData = async () => {
       let targetUserId = activeUserId;
 
-      // If no specific user is requested, blindly fetch the first user in the database to display at the root domain
       if (!targetUserId) {
+        if (!isMounted) return;
         setLoading(true);
         try {
           const defaultQuery = query(collection(db, 'users'), limit(1));
           const snapshot = await getDocs(defaultQuery);
-          if (!snapshot.empty) {
+          if (!snapshot.empty && isMounted) {
             targetUserId = snapshot.docs[0].id;
-          } else {
+          } else if (isMounted) {
             setProfile(null);
             setLinks([]);
             setLoading(false);
@@ -44,29 +45,32 @@ export function DataProvider({ children }) {
           }
         } catch (e) {
           console.error("Failed to fetch default public user", e);
-          setProfile(null);
-          setLinks([]);
-          setLoading(false);
+          if (isMounted) {
+            setProfile(null);
+            setLinks([]);
+            setLoading(false);
+          }
           return;
         }
       }
 
+      if (!isMounted) return;
       setLoading(true);
+      
       const profileRef = doc(db, 'users', targetUserId);
       const linksRef = collection(db, 'users', targetUserId, 'links');
 
-      unsubscribeProfile = onSnapshot(profileRef, (docSnap) => {
+      unsubProfile = onSnapshot(profileRef, (docSnap) => {
+        if (!isMounted) return;
         if (docSnap.exists()) {
           setProfile({ id: docSnap.id, ...docSnap.data() });
         } else {
           setProfile(null);
         }
-      }, (error) => {
-        console.error("Profile fetch error:", error);
-        setProfile(null);
       });
 
-      unsubscribeLinks = onSnapshot(linksRef, (snapshot) => {
+      unsubLinks = onSnapshot(linksRef, (snapshot) => {
+        if (!isMounted) return;
         const linksData = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
@@ -78,17 +82,15 @@ export function DataProvider({ children }) {
         });
         setLinks(linksData);
         setLoading(false);
-      }, (error) => {
-        console.error("Links fetch error:", error);
-        setLoading(false);
       });
     };
 
     loadData();
 
     return () => {
-      unsubscribeProfile();
-      unsubscribeLinks();
+      isMounted = false;
+      if (unsubProfile) unsubProfile();
+      if (unsubLinks) unsubLinks();
     };
   }, [activeUserId]);
 

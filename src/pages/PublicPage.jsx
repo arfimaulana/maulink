@@ -41,7 +41,25 @@ export default function PublicPage() {
   }, [userId, setPublicUserId]);
 
   if (loading || (!profile && userId)) {
-    return <div className="min-h-screen bg-gray-50 flex items-center justify-center text-slate-500">Loading profile...</div>;
+    return (
+      <div className="min-h-screen bg-gray-50 px-4 py-12 animate-pulse">
+        <div className="max-w-screen-md mx-auto flex flex-col items-center">
+          <div className="w-24 h-24 rounded-full bg-slate-200 mb-4" />
+          <div className="h-6 w-48 bg-slate-200 rounded mb-2" />
+          <div className="h-4 w-32 bg-slate-200 rounded mb-8" />
+          
+          <div className="w-full h-10 bg-slate-200 rounded-lg mb-8" />
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="aspect-[4/3] bg-white rounded-2xl border border-gray-100 p-4">
+                <div className="w-full h-full bg-slate-100 rounded-xl" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!profile) {
@@ -72,7 +90,13 @@ export default function PublicPage() {
         {/* Profile Header */}
         <div className="flex flex-col items-center mb-8">
           {profile.avatarUrl ? (
-            <img src={profile.avatarUrl} alt="Avatar" className="w-24 h-24 rounded-full object-cover mb-4 border-4 border-white shadow-sm" />
+            <img 
+              src={profile.avatarUrl} 
+              alt="Avatar" 
+              className="w-24 h-24 rounded-full object-cover mb-4 border-4 border-white shadow-sm" 
+              loading="lazy"
+              decoding="async"
+            />
           ) : (
             <div className="w-24 h-24 rounded-full bg-slate-200 mb-4 border-4 border-white shadow-sm flex items-center justify-center">
               <span className="text-2xl text-slate-400 font-medium">{profile.name?.charAt(0) || '?'}</span>
@@ -262,7 +286,13 @@ export default function PublicPage() {
                 viewLayout === 'grid' ? "w-full aspect-[4/3] bg-slate-50" : "w-16 h-16 sm:w-24 sm:h-24 rounded-xl"
               )}>
                 {link.thumbnailUrl ? (
-                  <img src={link.thumbnailUrl} alt={link.title} className="w-full h-full object-cover" />
+                  <img 
+                    src={link.thumbnailUrl} 
+                    alt={link.title} 
+                    className="w-full h-full object-cover" 
+                    loading="lazy"
+                    decoding="async"
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50">
                     <ArrowUpRight className={clsx(viewLayout === 'grid' ? "w-6 h-6" : "w-4 h-4", "opacity-30")} />

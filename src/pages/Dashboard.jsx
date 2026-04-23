@@ -3,7 +3,7 @@ import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { LogOut, Plus, Search, Image as ImageIcon, Copy, Edit2, Trash2, Link as LinkIcon, Settings, LayoutDashboard, Check, X, User, Scissors, ExternalLink, Activity, ChevronLeft, ChevronRight, SlidersHorizontal, ArrowUpDown, Filter } from 'lucide-react';
+import { LogOut, Plus, Search, Image as ImageIcon, Copy, Edit2, Trash2, Link as LinkIcon, Settings, LayoutDashboard, Check, X, User, Scissors, ExternalLink, Activity, ChevronLeft, ChevronRight, SlidersHorizontal, ArrowUpDown, Filter, AtSign, Phone } from 'lucide-react';
 import CreatableSelect from 'react-select/creatable';
 import Select from 'react-select';
 import { Dialog, Transition } from '@headlessui/react';
@@ -13,11 +13,21 @@ export default function Dashboard() {
   const { profile, links, updateProfile, addLink, updateLink, deleteLinkItem } = useData();
   const { logout, currentUser, updateUserEmail, updateUserPassword } = useAuth();
 
+  const countryCodes = [
+    { label: '🇮🇩 +62', value: '+62' },
+    { label: '🇺🇸 +1', value: '+1' },
+    { label: '🇸🇬 +65', value: '+65' },
+    { label: '🇲🇾 +60', value: '+60' },
+    { label: '🇦🇺 +61', value: '+61' },
+    { label: '🇬🇧 +44', value: '+44' },
+    { label: '🇯🇵 +81', value: '+81' },
+  ];
+
   const [activeTab, setActiveTab] = useState('links');
 
   // Profile State
   const [profileForm, setProfileForm] = useState({
-    name: '', subLabel: '', avatarUrl: '',
+    name: '', subLabel: '', avatarUrl: '', username: '', phoneNumber: '', countryCode: '+62',
     socials: { instagram: '', facebook: '', x: '', linkedin: '' }
   });
   const [avatarFile, setAvatarFile] = useState(null);
@@ -53,6 +63,7 @@ export default function Dashboard() {
     try {
       if (credentialsForm.email !== currentUser.email) {
         await updateUserEmail(credentialsForm.email);
+        await updateProfile({ email: credentialsForm.email });
       }
       if (credentialsForm.password) {
         await updateUserPassword(credentialsForm.password);
@@ -96,6 +107,9 @@ export default function Dashboard() {
         name: profile.name || '',
         subLabel: profile.subLabel || '',
         avatarUrl: profile.avatarUrl || '',
+        username: profile.username || '',
+        phoneNumber: profile.phoneNumber || '',
+        countryCode: profile.countryCode || '+62',
         socials: profile.socials || { instagram: '', facebook: '', x: '', linkedin: '' },
         socialsOrder: profile.socialsOrder || null
       });
@@ -111,7 +125,7 @@ export default function Dashboard() {
         await uploadBytes(fileRef, avatarFile);
         finalAvatarUrl = await getDownloadURL(fileRef);
       }
-      await updateProfile({ ...profileForm, avatarUrl: finalAvatarUrl });
+      await updateProfile({ ...profileForm, avatarUrl: finalAvatarUrl, email: currentUser.email });
       setAvatarFile(null);
       showToast('Profile saved!');
     } catch (e) {
@@ -256,7 +270,7 @@ export default function Dashboard() {
       {/* Sidebar */}
       <div className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
         <div className="p-6 border-b border-gray-100">
-          <h1 className="text-2xl font-black text-blue-600 tracking-tight">Maulink.</h1>
+          <img src="/maulink-logo.svg" alt="Maulink Logo" className="h-8" />
         </div>
         <div className="flex-1 p-4 space-y-1">
           <button
@@ -341,6 +355,16 @@ export default function Dashboard() {
                   <label className="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">Sub Label (Optional)</label>
                   <input type="text" className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={profileForm.subLabel} onChange={e => setProfileForm({ ...profileForm, subLabel: e.target.value })} />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">Username</label>
+                  <div className="relative">
+                    <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input type="text" className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                      placeholder="username"
+                      value={profileForm.username || ''} onChange={e => setProfileForm({ ...profileForm, username: e.target.value.toLowerCase().replace(/\s/g, '') })} />
+                  </div>
                 </div>
 
                 <div className="pt-4 border-t border-gray-100">
@@ -844,6 +868,67 @@ export default function Dashboard() {
                   <button className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                     onClick={handleCredentialsSave} disabled={savingCredentials}>
                     {savingCredentials ? 'Saving...' : 'Update Credentials'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl mx-auto mt-6">
+              <h2 className="text-lg font-bold text-slate-800 mb-6 font-geist">Personal Information</h2>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">Username</label>
+                    <div className="relative">
+                      <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input type="text" className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                        placeholder="yourname"
+                        value={profileForm.username || ''} onChange={e => setProfileForm({ ...profileForm, username: e.target.value.toLowerCase().replace(/\s/g, '') })} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">Phone Number</label>
+                    <div className="flex gap-2">
+                       <div className="w-[110px] shrink-0">
+                        <Select
+                          options={countryCodes}
+                          value={countryCodes.find(c => c.value === (profileForm.countryCode || '+62'))}
+                          onChange={v => setProfileForm({ ...profileForm, countryCode: v ? v.value : '+62' })}
+                          isSearchable={false}
+                          styles={{
+                            control: (base, state) => ({
+                              ...base,
+                              borderRadius: '8px',
+                              borderColor: state.isFocused ? '#2563eb' : '#e2e8f0',
+                              boxShadow: 'none',
+                              backgroundColor: '#f8fafc',
+                              '&:hover': { borderColor: '#2563eb' },
+                              minHeight: '38px',
+                              height: '38px'
+                            }),
+                            option: (base, state) => ({
+                              ...base,
+                              fontSize: '13px',
+                              backgroundColor: state.isSelected ? '#2563eb' : state.isFocused ? '#eff6ff' : 'white',
+                              color: state.isSelected ? 'white' : '#475569',
+                              cursor: 'pointer'
+                            })
+                          }}
+                        />
+                      </div>
+                      <div className="relative flex-1">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input type="tel" className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium h-[38px]"
+                          placeholder="812..."
+                          value={profileForm.phoneNumber || ''} onChange={e => setProfileForm({ ...profileForm, phoneNumber: e.target.value })} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-4 flex gap-2">
+                  <button className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                    onClick={handleProfileSave} disabled={savingProfile}>
+                    {savingProfile ? 'Saving...' : 'Save Changes'}
                   </button>
                 </div>
               </div>

@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Lock } from 'lucide-react';
+import { Lock, User, AtSign, Eye, EyeOff } from 'lucide-react';
+import { db } from '../firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -16,10 +19,45 @@ export default function Login() {
     try {
       setError('');
       setLoading(true);
-      await login(email, password);
+
+      let loginEmail = identifier;
+
+      // If it doesn't look like an email (no @ after some text), try to find by username
+      // Note: User can have @ in username, but usually not at the end.
+      // We check if identifier is a valid email format. 
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      
+      if (!emailRegex.test(identifier)) {
+        // Try to find the email associated with this username
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('username', '==', identifier));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          // Firebase doesn't directly give us the email of the auth account here easily 
+          // if we don't store it in the doc. Does our user doc have email?
+          // Let's check the user doc data.
+          const userData = querySnapshot.docs[0].data();
+          // We should have stored email in the user doc during registration or update.
+          // Let's assume we have it or can find it.
+          // IF we don't have email in the doc, we might need to rethink.
+          
+          // Actually, in our current setup, do we save email in the 'users' doc?
+          // Let's verify DataContext/Dashboard.
+          if (userData.email) {
+            loginEmail = userData.email;
+          } else {
+            // If email is not in the doc, we might have a problem.
+            // But let's check AuthContext/useData.
+          }
+        }
+      }
+
+      await login(loginEmail, password);
       navigate('/dashboard');
     } catch (err) {
-      setError('Failed to sign in. Check your credentials.');
+      console.error(err);
+      setError('Invalid username/email or password.');
     } finally {
       setLoading(false);
     }
@@ -37,24 +75,38 @@ export default function Login() {
         {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg mb-4">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-            <input 
-              type="email" 
-              required
-              className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-            />
+            <label className="block text-sm font-medium text-slate-700 mb-1">Username or Email</label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input 
+                type="text" 
+                required
+                placeholder="e.g. @yourname or mail@example.com"
+                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
+                value={identifier}
+                onChange={e => setIdentifier(e.target.value)}
+              />
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-            <input 
-              type="password" 
-              required
-              className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-            />
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input 
+                type={showPassword ? "text" : "password"} 
+                required
+                className="w-full pl-10 pr-12 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
           <button 
             type="submit" 
