@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { LogOut, Plus, Search, Image as ImageIcon, Copy, Edit2, Trash2, Link as LinkIcon, Settings, LayoutDashboard, Check, X, User, Scissors, ExternalLink, Activity, ChevronLeft, ChevronRight, SlidersHorizontal, ArrowUpDown, Filter, AtSign, Phone } from 'lucide-react';
+import { LogOut, Plus, Search, Image as ImageIcon, Copy, Edit2, Trash2, Link as LinkIcon, Settings, LayoutDashboard, Check, X, User, Scissors, ExternalLink, Activity, ChevronLeft, ChevronRight, SlidersHorizontal, ArrowUpDown, Filter, AtSign, Phone, Palette, Layout, Smartphone, Monitor } from 'lucide-react';
 import CreatableSelect from 'react-select/creatable';
 import Select from 'react-select';
 import { Dialog, Transition } from '@headlessui/react';
@@ -24,13 +24,16 @@ export default function Dashboard() {
   ];
 
   const [activeTab, setActiveTab] = useState('links');
+  const [previewMode, setPreviewMode] = useState('mobile');
 
   // Profile State
   const [profileForm, setProfileForm] = useState({
     name: '', subLabel: '', avatarUrl: '', username: '', phoneNumber: '', countryCode: '+62',
+    coverUrl: '', layout: 'none',
     socials: { instagram: '', facebook: '', x: '', linkedin: '' }
   });
   const [avatarFile, setAvatarFile] = useState(null);
+  const [coverFile, setCoverFile] = useState(null);
   const [savingProfile, setSavingProfile] = useState(false);
 
   // Generic Toast State
@@ -107,6 +110,8 @@ export default function Dashboard() {
         name: profile.name || '',
         subLabel: profile.subLabel || '',
         avatarUrl: profile.avatarUrl || '',
+        coverUrl: profile.coverUrl || '',
+        layout: profile.layout || 'none',
         username: profile.username || '',
         phoneNumber: profile.phoneNumber || '',
         countryCode: profile.countryCode || '+62',
@@ -115,6 +120,25 @@ export default function Dashboard() {
       });
     }
   }, [profile]);
+
+  const iframeRef = useRef(null);
+
+  const syncPreview = () => {
+    if (iframeRef.current?.contentWindow) {
+      const currentCoverUrl = coverFile ? URL.createObjectURL(coverFile) : profileForm.coverUrl;
+      iframeRef.current.contentWindow.postMessage({
+        type: 'PREVIEW_UPDATE',
+        payload: {
+          layout: profileForm.layout,
+          coverUrl: currentCoverUrl
+        }
+      }, '*');
+    }
+  };
+
+  useEffect(() => {
+    syncPreview();
+  }, [profileForm.layout, profileForm.coverUrl, coverFile]);
 
   const handleProfileSave = async () => {
     setSavingProfile(true);
@@ -125,8 +149,17 @@ export default function Dashboard() {
         await uploadBytes(fileRef, avatarFile);
         finalAvatarUrl = await getDownloadURL(fileRef);
       }
-      await updateProfile({ ...profileForm, avatarUrl: finalAvatarUrl, email: currentUser.email });
+      
+      let finalCoverUrl = profileForm.coverUrl;
+      if (coverFile) {
+        const fileRef = ref(storage, `covers/${currentUser.uid}/${coverFile.name}`);
+        await uploadBytes(fileRef, coverFile);
+        finalCoverUrl = await getDownloadURL(fileRef);
+      }
+      
+      await updateProfile({ ...profileForm, avatarUrl: finalAvatarUrl, coverUrl: finalCoverUrl, email: currentUser.email });
       setAvatarFile(null);
+      setCoverFile(null);
       showToast('Profile saved!');
     } catch (e) {
       console.error(e);
@@ -288,6 +321,13 @@ export default function Dashboard() {
           </button>
 
           <button
+            onClick={() => setActiveTab('appearance')}
+            className={clsx("w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors", activeTab === 'appearance' ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-gray-50")}
+          >
+            <Palette className="w-5 h-5" /> Appearance
+          </button>
+
+          <button
             onClick={() => setActiveTab('settings')}
             className={clsx("w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors", activeTab === 'settings' ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-gray-50")}
           >
@@ -316,6 +356,11 @@ export default function Dashboard() {
               onClick={() => setActiveTab('shortener')}
               className={clsx("flex-1 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium", activeTab === 'shortener' ? "bg-white shadow border border-gray-100" : "text-slate-500")}
             >Shorts</button>
+
+            <button
+              onClick={() => setActiveTab('appearance')}
+              className={clsx("flex-1 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium", activeTab === 'appearance' ? "bg-white shadow border border-gray-100" : "text-slate-500")}
+            >Appearance</button>
 
             <button
               onClick={() => setActiveTab('settings')}
@@ -839,6 +884,182 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Appearance Section */}
+          <div className={clsx("lg:col-span-12", activeTab === 'appearance' ? "block" : "hidden")}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+              <div className="space-y-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                  <h2 className="text-lg font-bold text-slate-800 mb-6">Page Style</h2>
+                  
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-slate-700">Cover Header</label>
+                      {(profileForm.coverUrl || coverFile) && (
+                        <button 
+                          onClick={(e) => { 
+                            e.preventDefault(); 
+                            setCoverFile(null); 
+                            setProfileForm({ ...profileForm, coverUrl: '' }); 
+                          }}
+                          className="text-xs font-semibold text-red-500 hover:text-red-700 hover:underline"
+                        >
+                          Remove Cover
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 mb-3">Recommended size: 1200 x 400px (3:1 ratio)</p>
+                    <div className="w-full aspect-[21/9] rounded-xl bg-slate-50 border-2 border-dashed border-gray-200 overflow-hidden relative group cursor-pointer flex items-center justify-center">
+                      {coverFile ? (
+                        <img src={URL.createObjectURL(coverFile)} alt="Cover Preview" className="w-full h-full object-cover" />
+                      ) : profileForm.coverUrl ? (
+                        <img src={profileForm.coverUrl} alt="Cover" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="text-center text-slate-400">
+                          <ImageIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                          <span className="text-sm font-medium">Upload Cover</span>
+                        </div>
+                      )}
+                      
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-white text-sm font-medium bg-black/50 px-4 py-2 rounded-lg">Change Image</span>
+                      </div>
+                      
+                      <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={e => {
+                        if (e.target.files?.[0]) setCoverFile(e.target.files[0]);
+                      }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-3">Layout Pattern</label>
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Default Pattern */}
+                      <button
+                        onClick={() => setProfileForm({ ...profileForm, layout: 'none' })}
+                        className={clsx(
+                          "rounded-2xl border-2 flex flex-col items-center p-3 transition-all",
+                          profileForm.layout === 'none' ? "border-blue-500 shadow-md" : "border-gray-200 hover:border-gray-300"
+                        )}
+                      >
+                        <div className="w-full aspect-[4/5] bg-gray-50 rounded-xl border border-gray-100 shadow-sm flex flex-col p-4">
+                           <div className="w-12 h-12 rounded-full bg-slate-200 mx-auto mt-4" />
+                           <div className="h-3 w-20 bg-slate-200 rounded mx-auto mt-4" />
+                           <div className="h-8 w-full bg-slate-100 rounded mt-6" />
+                           <div className="h-8 w-full bg-slate-100 rounded mt-2" />
+                        </div>
+                        <span className={clsx("text-sm font-semibold mt-3", profileForm.layout === 'none' ? "text-blue-600" : "text-slate-600")}>Default</span>
+                      </button>
+
+                      {/* Classic Pattern */}
+                      <button
+                        onClick={() => setProfileForm({ ...profileForm, layout: 'classic' })}
+                        className={clsx(
+                          "rounded-2xl border-2 flex flex-col items-center p-3 transition-all",
+                          profileForm.layout === 'classic' ? "border-emerald-500 shadow-md" : "border-gray-200 hover:border-gray-300"
+                        )}
+                      >
+                        <div className="w-full aspect-[4/5] bg-gray-50 rounded-xl border border-gray-100 shadow-sm flex flex-col overflow-hidden px-4 pb-4 relative">
+                           <div className="absolute top-0 left-0 right-0 h-24 bg-slate-400 flex items-center justify-center">
+                             <ImageIcon className="w-6 h-6 text-white/50" />
+                           </div>
+                           <div className="w-12 h-12 rounded-full bg-slate-200 mx-auto mt-28 border-2 border-white" />
+                           <div className="h-3 w-20 bg-slate-200 rounded mx-auto mt-3" />
+                           <div className="h-8 w-full bg-slate-100 rounded mt-4" />
+                        </div>
+                        <span className={clsx("text-sm font-semibold mt-3", profileForm.layout === 'classic' ? "text-emerald-600" : "text-slate-600")}>Classic</span>
+                      </button>
+
+                      {/* Modern Pattern */}
+                      <button
+                        onClick={() => setProfileForm({ ...profileForm, layout: 'modern' })}
+                        className={clsx(
+                          "rounded-2xl border-2 flex flex-col items-center p-3 transition-all",
+                          profileForm.layout === 'modern' ? "border-emerald-500 shadow-md" : "border-gray-200 hover:border-gray-300"
+                        )}
+                      >
+                        <div className="w-full aspect-[4/5] bg-gray-50 rounded-xl border border-gray-100 shadow-sm flex flex-col overflow-hidden px-4 pb-4 relative">
+                           <div className="absolute top-0 left-0 right-0 h-24 bg-slate-400 flex items-center justify-center">
+                             <ImageIcon className="w-6 h-6 text-white/50" />
+                           </div>
+                           <div className="w-12 h-12 rounded-full bg-slate-200 mx-auto mt-[4.5rem] border-4 border-white shadow-sm relative z-10" />
+                           <div className="h-3 w-20 bg-slate-200 rounded mx-auto mt-3" />
+                           <div className="h-8 w-full bg-slate-100 rounded mt-4" />
+                        </div>
+                        <span className={clsx("text-sm font-semibold mt-3", profileForm.layout === 'modern' ? "text-emerald-600" : "text-slate-600")}>Modern</span>
+                      </button>
+
+                      {/* Clean Pattern */}
+                      <button
+                        onClick={() => setProfileForm({ ...profileForm, layout: 'clean' })}
+                        className={clsx(
+                          "rounded-2xl border-2 flex flex-col items-center p-3 transition-all",
+                          profileForm.layout === 'clean' ? "border-emerald-500 shadow-md" : "border-gray-200 hover:border-gray-300"
+                        )}
+                      >
+                        <div className="w-full aspect-[4/5] bg-gray-50 rounded-xl border border-gray-100 shadow-sm flex flex-col overflow-hidden px-4 pb-4 relative">
+                           <div className="absolute top-0 left-0 right-0 h-24 bg-slate-400 flex items-center justify-center">
+                             <ImageIcon className="w-6 h-6 text-white/50" />
+                           </div>
+                           <div className="h-3 w-20 bg-slate-200 rounded mx-auto mt-28" />
+                           <div className="h-8 w-full bg-slate-100 rounded mt-4" />
+                           <div className="h-8 w-full bg-slate-100 rounded mt-2" />
+                        </div>
+                        <span className={clsx("text-sm font-semibold mt-3", profileForm.layout === 'clean' ? "text-emerald-600" : "text-slate-600")}>Clean</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 mt-6 border-t border-gray-100 flex justify-end">
+                    <button className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                      onClick={handleProfileSave} disabled={savingProfile}>
+                      {savingProfile ? 'Saving...' : 'Save Appearance'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview Box */}
+              <div className="bg-slate-100 rounded-3xl p-6 hidden lg:block sticky top-8">
+                <div className="flex items-center justify-between mb-4 px-2">
+                  <h3 className="font-bold text-slate-700">Live Preview</h3>
+                  <div className="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm border border-gray-200">
+                     <button 
+                       onClick={() => setPreviewMode('mobile')}
+                       className={clsx("p-1.5 rounded transition-colors", previewMode === 'mobile' ? "bg-slate-800 text-white shadow-sm" : "text-slate-400 hover:text-slate-600")}
+                     >
+                       <Smartphone className="w-4 h-4" />
+                     </button>
+                     <button 
+                       onClick={() => setPreviewMode('desktop')}
+                       className={clsx("p-1.5 rounded transition-colors", previewMode === 'desktop' ? "bg-slate-800 text-white shadow-sm" : "text-slate-400 hover:text-slate-600")}
+                     >
+                       <Monitor className="w-4 h-4" />
+                     </button>
+                  </div>
+                </div>
+
+                <div className={clsx(
+                  "mx-auto bg-white border-8 border-slate-800 shadow-xl overflow-hidden relative flex flex-col transition-all duration-300",
+                  previewMode === 'mobile' ? "w-[320px] h-[650px] rounded-[3rem]" : "w-full h-[650px] rounded-xl"
+                )}>
+                  {/* Fake Notch only for Mobile */}
+                  {previewMode === 'mobile' && (
+                    <div className="absolute top-0 inset-x-0 h-6 bg-slate-800 rounded-b-xl z-50 w-32 mx-auto" />
+                  )}
+                  
+                  {/* Iframe for mobile preview - we use the public page url with a query param to preview */}
+                  <iframe 
+                    ref={iframeRef}
+                    onLoad={syncPreview}
+                    src={currentUser ? `/${currentUser.uid}?preview=true` : ''} 
+                    className="w-full h-full bg-gray-50 border-none"
+                    title="Live Preview"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 

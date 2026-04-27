@@ -25,7 +25,19 @@ const getSocialUrl = (network, value) => {
 
 export default function PublicPage() {
   const { userId } = useParams();
-  const { profile, links, loading, setPublicUserId } = useData();
+  const { profile: dbProfile, links, loading, setPublicUserId } = useData();
+  const [previewOverrides, setPreviewOverrides] = useState({});
+  const profile = dbProfile ? { ...dbProfile, ...previewOverrides } : null;
+
+  useEffect(() => {
+    const handleMessage = (e) => {
+      if (e.data?.type === 'PREVIEW_UPDATE') {
+        setPreviewOverrides(e.data.payload);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortOption, setSortOption] = useState('newest');
@@ -86,21 +98,39 @@ export default function PublicPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-slate-800">
-      <div className="max-w-screen-md mx-auto px-4 py-12">
-        {/* Profile Header */}
-        <div className="flex flex-col items-center mb-8">
-          {profile.avatarUrl ? (
-            <img 
-              src={profile.avatarUrl} 
-              alt="Avatar" 
-              className="w-24 h-24 rounded-full object-cover mb-4 border-4 border-white shadow-sm" 
-              loading="lazy"
-              decoding="async"
-            />
-          ) : (
-            <div className="w-24 h-24 rounded-full bg-slate-200 mb-4 border-4 border-white shadow-sm flex items-center justify-center">
-              <span className="text-2xl text-slate-400 font-medium">{profile.name?.charAt(0) || '?'}</span>
-            </div>
+      <div className={clsx("max-w-screen-md mx-auto", profile?.layout === 'none' || !profile?.layout ? "py-12 px-4 sm:px-8" : "py-0 pb-12")}>
+        {/* Cover Header */}
+        {profile?.layout !== 'none' && profile?.layout && profile?.coverUrl && (
+           <div className={clsx(
+             "w-full bg-transparent overflow-hidden sm:rounded-b-3xl",
+             // on desktop maybe 300px, on mobile aspect ratio
+             "aspect-[21/9] sm:h-64 sm:aspect-auto" 
+           )}>
+             <img src={profile.coverUrl} className="w-full h-full object-cover" alt="Cover" />
+           </div>
+        )}
+        
+        <div className="px-4 sm:px-8">
+          {/* Profile Header */}
+          <div className={clsx(
+          "flex flex-col items-center mb-8",
+          profile?.layout === 'modern' && profile?.coverUrl ? "-mt-12 relative z-10" : 
+          profile?.layout !== 'none' && profile?.coverUrl ? "mt-8" : ""
+        )}>
+          {profile?.layout !== 'clean' && (
+            profile.avatarUrl ? (
+              <img 
+                src={profile.avatarUrl} 
+                alt="Avatar" 
+                className="w-24 h-24 rounded-full object-cover mb-4 border-4 border-white shadow-sm bg-white" 
+                loading="lazy"
+                decoding="async"
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-slate-200 mb-4 border-4 border-white shadow-sm flex items-center justify-center bg-white">
+                <span className="text-2xl text-slate-400 font-medium">{profile.name?.charAt(0) || '?'}</span>
+              </div>
+            )
           )}
           <h1 className="text-xl font-bold">{profile.name || 'Your Name'}</h1>
           <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase mt-1">
@@ -351,5 +381,6 @@ export default function PublicPage() {
         </div>
       </div>
     </div>
+  </div>
   );
 }
