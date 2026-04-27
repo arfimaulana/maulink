@@ -799,12 +799,12 @@ export default function Dashboard() {
 
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {paginatedLinks.map(link => (
-                  <div key={link.id} className="p-5 border border-gray-100 rounded-xl hover:border-blue-100 hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all bg-white relative group flex flex-col justify-between h-48">
-                    <div>
-                      <div className="flex justify-between items-center mb-2 gap-2">
+                  <div key={link.id} className="min-w-0 p-4 sm:p-5 border border-gray-100 rounded-xl hover:border-blue-100 hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all bg-white relative group flex flex-col justify-between sm:h-48">
+                    <div className="min-w-0">
+                      <div className="flex justify-between items-center mb-2 gap-2 min-w-0">
                         <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-md min-w-0 flex-1">
                           <Scissors className="w-3.5 h-3.5 shrink-0" />
-                          <span className="text-xs font-bold font-mono tracking-wide truncate mt-0.5">arfimaulana.com/l/{link.shortCode}</span>
+                          <span className="text-[10px] sm:text-xs font-bold font-mono tracking-wide truncate mt-0.5">arfimaulana.com/l/{link.shortCode}</span>
                         </div>
                         <button
                           className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"
