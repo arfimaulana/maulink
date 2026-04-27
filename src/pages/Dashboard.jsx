@@ -9,6 +9,46 @@ import Select from 'react-select';
 import { Dialog, Transition } from '@headlessui/react';
 import clsx from 'clsx';
 
+const compressImage = (file, maxWidth = 1200) => {
+  return new Promise((resolve, reject) => {
+    if (!file.type.match(/image.*/)) return resolve(file); // Don't compress non-images
+    
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxW = maxWidth;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxW) {
+          height = Math.round((height * maxW) / width);
+          width = maxW;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob((blob) => {
+          if (!blob) return reject(new Error('Canvas fallback failed'));
+          const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+            type: 'image/webp',
+            lastModified: Date.now()
+          });
+          resolve(newFile);
+        }, 'image/webp', 0.82);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
+
 export default function Dashboard() {
   const { profile, links, updateProfile, addLink, updateLink, deleteLinkItem } = useData();
   const { logout, currentUser, updateUserEmail, updateUserPassword } = useAuth();
@@ -145,15 +185,19 @@ export default function Dashboard() {
     try {
       let finalAvatarUrl = profileForm.avatarUrl;
       if (avatarFile) {
-        const fileRef = ref(storage, `avatars/${currentUser.uid}/${avatarFile.name}`);
-        await uploadBytes(fileRef, avatarFile);
+        showToast('Compressing avatar...');
+        const compressedAvatar = await compressImage(avatarFile, 400); // Avatars only need 400px
+        const fileRef = ref(storage, `avatars/${currentUser.uid}/${compressedAvatar.name}`);
+        await uploadBytes(fileRef, compressedAvatar);
         finalAvatarUrl = await getDownloadURL(fileRef);
       }
       
       let finalCoverUrl = profileForm.coverUrl;
       if (coverFile) {
-        const fileRef = ref(storage, `covers/${currentUser.uid}/${coverFile.name}`);
-        await uploadBytes(fileRef, coverFile);
+        showToast('Compressing cover...');
+        const compressedCover = await compressImage(coverFile, 1200); // Covers max 1200px
+        const fileRef = ref(storage, `covers/${currentUser.uid}/${compressedCover.name}`);
+        await uploadBytes(fileRef, compressedCover);
         finalCoverUrl = await getDownloadURL(fileRef);
       }
       
