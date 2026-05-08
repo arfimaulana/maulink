@@ -3,7 +3,7 @@ import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { LogOut, Plus, Search, Image as ImageIcon, Copy, Edit2, Trash2, Link as LinkIcon, Settings, LayoutDashboard, Check, X, User, Scissors, ExternalLink, Activity, ChevronLeft, ChevronRight, SlidersHorizontal, ArrowUpDown, Filter, AtSign, Phone, Palette, Layout, Smartphone, Monitor } from 'lucide-react';
+import { LogOut, Plus, Search, Image as ImageIcon, Copy, Edit2, Trash2, Link as LinkIcon, Settings, LayoutDashboard, Check, X, User, Users, Scissors, ExternalLink, Activity, ChevronLeft, ChevronRight, SlidersHorizontal, ArrowUpDown, Filter, AtSign, Phone, Palette, Layout, Smartphone, Monitor } from 'lucide-react';
 import CreatableSelect from 'react-select/creatable';
 import Select from 'react-select';
 import { Dialog, Transition } from '@headlessui/react';
@@ -137,6 +137,103 @@ export default function Dashboard() {
   });
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [savingLink, setSavingLink] = useState(false);
+
+  // Social Checker State
+  const [followersFile, setFollowersFile] = useState(null);
+  const [followingFile, setFollowingFile] = useState(null);
+  const [unfollowers, setUnfollowers] = useState([]);
+  const [checkingSocial, setCheckingSocial] = useState(false);
+  const [socialCheckStatus, setSocialCheckStatus] = useState(null);
+  const [socialCheckError, setSocialCheckError] = useState('');
+
+  const handleCheckSocial = async () => {
+    if (!followersFile || !followingFile) {
+      setSocialCheckError('Please upload both files.');
+      return;
+    }
+    setCheckingSocial(true);
+    setSocialCheckError('');
+    setSocialCheckStatus(null);
+    setUnfollowers([]);
+    
+    try {
+      const readJsonFile = (file) => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            try { resolve(JSON.parse(e.target.result)); }
+            catch (err) { reject(new Error('Invalid JSON')); }
+          };
+          reader.onerror = () => reject(new Error('File read error'));
+          reader.readAsText(file);
+        });
+      };
+
+      const followersData = await readJsonFile(followersFile);
+      const followingData = await readJsonFile(followingFile);
+
+      const extractUsernames = (data) => {
+        const usernames = new Set();
+        const traverse = (node) => {
+          if (!node) return;
+          if (Array.isArray(node)) {
+            node.forEach(traverse);
+          } else if (typeof node === 'object') {
+            if (node.string_list_data && Array.isArray(node.string_list_data)) {
+              node.string_list_data.forEach(item => {
+                if (typeof item === 'string') {
+                  usernames.add(item);
+                } else if (item && typeof item.value === 'string' && item.value.trim() !== '') {
+                  usernames.add(item.value);
+                } else if (item && typeof item.href === 'string' && item.href.includes('instagram.com/')) {
+                  const match = item.href.match(/instagram\.com\/([^/]+)/);
+                  if (match && match[1]) usernames.add(match[1]);
+                }
+              });
+            } 
+            
+            // If the node itself has an href
+            if (typeof node.href === 'string' && node.href.includes('instagram.com/')) {
+               if (typeof node.value === 'string' && node.value.trim() !== '') {
+                 usernames.add(node.value);
+               } else {
+                 const match = node.href.match(/instagram\.com\/([^/]+)/);
+                 if (match && match[1]) usernames.add(match[1]);
+               }
+            } 
+            
+            // Generic fallbacks
+            if (typeof node.username === 'string' && node.username.trim() !== '') {
+              usernames.add(node.username);
+            }
+            
+            // Always traverse deeper to ensure we don't miss anything
+            Object.values(node).forEach(traverse);
+          }
+        };
+        traverse(data);
+        return Array.from(usernames);
+      };
+
+      const followerUsernames = new Set(extractUsernames(followersData));
+      const followingUsernames = extractUsernames(followingData);
+
+      const notFollowingBack = followingUsernames.filter(user => !followerUsernames.has(user));
+      setUnfollowers(notFollowingBack);
+      setSocialCheckStatus({
+         success: true,
+         followersCount: followerUsernames.size,
+         followingCount: followingUsernames.length
+      });
+
+    } catch (e) {
+      console.error(e);
+      setSocialCheckError('Error parsing files. Ensure they are the correct JSON files exported from Instagram.');
+      setSocialCheckStatus('error');
+    } finally {
+      setCheckingSocial(false);
+    }
+  };
 
   // Pagination & Sort State
   const [currentPage, setCurrentPage] = useState(1);
@@ -372,6 +469,13 @@ export default function Dashboard() {
           </button>
 
           <button
+            onClick={() => setActiveTab('checker')}
+            className={clsx("w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors", activeTab === 'checker' ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-gray-50")}
+          >
+            <Users className="w-5 h-5" /> Social Checker
+          </button>
+
+          <button
             onClick={() => setActiveTab('settings')}
             className={clsx("w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors", activeTab === 'settings' ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-gray-50")}
           >
@@ -405,6 +509,11 @@ export default function Dashboard() {
               onClick={() => setActiveTab('appearance')}
               className={clsx("flex-1 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium", activeTab === 'appearance' ? "bg-white shadow border border-gray-100" : "text-slate-500")}
             >Appearance</button>
+
+            <button
+              onClick={() => setActiveTab('checker')}
+              className={clsx("flex-1 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium", activeTab === 'checker' ? "bg-white shadow border border-gray-100" : "text-slate-500")}
+            >Checker</button>
 
             <button
               onClick={() => setActiveTab('settings')}
@@ -1104,6 +1213,77 @@ export default function Dashboard() {
                   />
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Social Checker Section (Full Width) */}
+          <div className={clsx("lg:col-span-12", activeTab === 'checker' ? "block" : "hidden")}>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-4xl mx-auto min-h-[500px]">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                  <Users className="w-5 h-5" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-800">Social Checker</h2>
+              </div>
+              <p className="text-slate-500 text-sm mb-8">Check who is not following you back on Instagram. Upload your exported JSON files below. No data is sent to our servers; everything is checked locally in your browser.</p>
+
+              <div className="grid md:grid-cols-2 gap-6 mb-8">
+                <div className="p-4 border border-gray-200 rounded-xl bg-gray-50">
+                  <label className="block text-sm font-bold text-slate-700 mb-2">1. Followers File</label>
+                  <p className="text-xs text-slate-500 mb-4">Upload <span className="font-mono bg-gray-200 px-1 rounded text-gray-700">followers_1.json</span></p>
+                  <input type="file" accept=".json" className="text-sm w-full file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" onChange={e => setFollowersFile(e.target.files[0])} />
+                </div>
+                
+                <div className="p-4 border border-gray-200 rounded-xl bg-gray-50">
+                  <label className="block text-sm font-bold text-slate-700 mb-2">2. Following File</label>
+                  <p className="text-xs text-slate-500 mb-4">Upload <span className="font-mono bg-gray-200 px-1 rounded text-gray-700">following.json</span></p>
+                  <input type="file" accept=".json" className="text-sm w-full file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" onChange={e => setFollowingFile(e.target.files[0])} />
+                </div>
+              </div>
+
+              {socialCheckError && (
+                <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm mb-6 flex items-center gap-2">
+                  <Activity className="w-4 h-4 shrink-0" />
+                  {socialCheckError}
+                </div>
+              )}
+
+              <button 
+                onClick={handleCheckSocial}
+                disabled={checkingSocial}
+                className="w-full sm:w-auto px-6 py-3 bg-slate-800 text-white rounded-xl font-medium hover:bg-slate-900 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {checkingSocial ? 'Checking...' : 'Check Unfollowers'}
+              </button>
+
+              {socialCheckStatus?.success && (
+                <div className="mt-8 pt-8 border-t border-gray-100">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-800">Results</h3>
+                      <p className="text-xs text-slate-500 mt-1">Found {socialCheckStatus.followingCount} following and {socialCheckStatus.followersCount} followers.</p>
+                    </div>
+                    <span className="px-3 py-1 bg-red-50 text-red-600 rounded-full text-sm font-bold w-fit">{unfollowers.length} Unfollowers</span>
+                  </div>
+                  
+                  {unfollowers.length > 0 ? (
+                    <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 max-h-[400px] overflow-y-auto pr-2">
+                      {unfollowers.map(user => (
+                        <a key={user} href={`https://instagram.com/${user}`} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50 transition group">
+                          <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-500 shrink-0">
+                            <User className="w-5 h-5" />
+                          </div>
+                          <span className="font-medium text-sm text-slate-700 group-hover:text-blue-700 truncate">@{user}</span>
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-slate-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                      Great news! Everyone you follow is following you back.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
