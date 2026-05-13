@@ -334,36 +334,43 @@ export default function PublicPage() {
                 "flex flex-col flex-1",
                 viewLayout === 'grid' ? "p-4 justify-between" : "pl-3 pr-1 justify-center"
               )}>
-                <div className="space-y-2.5">
-                  {link.category && viewLayout === 'list' && (
-                    <span className="inline-block px-1.5 py-0.5 rounded bg-gray-100 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                      {link.category}
-                    </span>
-                  )}
-                  <h3 className={clsx(
-                    "font-bold text-slate-800 leading-tight pr-4",
-                    viewLayout === 'grid' ? "text-sm sm:text-base line-clamp-2" : "text-sm sm:text-base line-clamp-1"
-                  )}>
-                    {link.title}
-                  </h3>
-                </div>
-
-                <div className={clsx(
-                  "flex items-end justify-between",
-                  viewLayout === 'grid' ? "mt-3" : "mt-0.5"
-                )}>
-                  {link.price ? (
-                    <span className="font-bold text-slate-700 text-[11px] sm:text-xs">
-                      {link.currency || '$'} {Number(link.price).toLocaleString()}
-                    </span>
-                  ) : <div />}
-                  
-                  {viewLayout === 'grid' && (
-                    <div className="w-7 h-7 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
+                <div className="flex justify-between items-end gap-2">
+                  <div className="space-y-2.5 flex-1 min-w-0">
+                    {link.category && viewLayout === 'list' && (
+                      <span className="inline-block px-1.5 py-0.5 rounded bg-gray-100 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                        {link.category}
+                      </span>
+                    )}
+                    <h3 className={clsx(
+                      "font-bold text-slate-800 leading-tight",
+                      viewLayout === 'grid' ? "text-sm sm:text-base line-clamp-2" : "text-sm sm:text-base line-clamp-1"
+                    )}>
+                      {link.title}
+                    </h3>
+                  </div>
+                  {viewLayout === 'grid' && (!link.price || profile.hidePrices) && (
+                    <div className="w-7 h-7 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0 mb-0.5">
                       <ArrowUpRight className="w-3.5 h-3.5" />
                     </div>
                   )}
                 </div>
+
+                {link.price && !profile.hidePrices && (
+                  <div className={clsx(
+                    "flex items-end justify-between",
+                    viewLayout === 'grid' ? "mt-3" : "mt-0.5"
+                  )}>
+                    <span className="font-bold text-slate-700 text-[11px] sm:text-xs">
+                      {link.currency || '$'} {Number(link.price).toLocaleString()}
+                    </span>
+                    
+                    {viewLayout === 'grid' && (
+                      <div className="w-7 h-7 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               
               {viewLayout === 'list' && (

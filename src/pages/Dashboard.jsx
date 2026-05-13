@@ -6,6 +6,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { LogOut, Plus, Search, Image as ImageIcon, Copy, Edit2, Trash2, Link as LinkIcon, Settings, LayoutDashboard, Check, X, User, Users, Scissors, ExternalLink, Activity, ChevronLeft, ChevronRight, SlidersHorizontal, ArrowUpDown, Filter, AtSign, Phone, Palette, Layout, Smartphone, Monitor } from 'lucide-react';
 import CreatableSelect from 'react-select/creatable';
 import Select from 'react-select';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Dialog, Transition } from '@headlessui/react';
 import clsx from 'clsx';
 
@@ -63,13 +64,16 @@ export default function Dashboard() {
     { label: '🇯🇵 +81', value: '+81' },
   ];
 
-  const [activeTab, setActiveTab] = useState('links');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const path = location.pathname.split('/')[1] || 'dashboard';
+  const activeTab = path === 'dashboard' ? 'links' : path;
   const [previewMode, setPreviewMode] = useState('mobile');
 
   // Profile State
   const [profileForm, setProfileForm] = useState({
     name: '', subLabel: '', avatarUrl: '', username: '', phoneNumber: '', countryCode: '+62',
-    coverUrl: '', layout: 'none',
+    coverUrl: '', layout: 'none', hidePrices: false,
     socials: { instagram: '', facebook: '', x: '', linkedin: '' }
   });
   const [avatarFile, setAvatarFile] = useState(null);
@@ -174,43 +178,65 @@ export default function Dashboard() {
 
       const extractUsernames = (data) => {
         const usernames = new Set();
+        
+        const extractFromHref = (href) => {
+           if (typeof href !== 'string' || !href.includes('instagram.com/')) return null;
+           const match = href.match(/instagram\.com\/(?:_u\/)?([^/?#]+)/);
+           return match && match[1] && match[1] !== 'p' && match[1] !== 'reel' && match[1] !== 'stories' ? match[1] : null;
+        };
+
         const traverse = (node) => {
           if (!node) return;
           if (Array.isArray(node)) {
             node.forEach(traverse);
           } else if (typeof node === 'object') {
+            let foundUsername = false;
+
             if (node.string_list_data && Array.isArray(node.string_list_data)) {
               node.string_list_data.forEach(item => {
                 if (typeof item === 'string') {
                   usernames.add(item);
+                  foundUsername = true;
                 } else if (item && typeof item.value === 'string' && item.value.trim() !== '') {
                   usernames.add(item.value);
-                } else if (item && typeof item.href === 'string' && item.href.includes('instagram.com/')) {
-                  const match = item.href.match(/instagram\.com\/([^/]+)/);
-                  if (match && match[1]) usernames.add(match[1]);
+                  foundUsername = true;
+                } else if (item && typeof item.href === 'string') {
+                  const u = extractFromHref(item.href);
+                  if (u) {
+                    usernames.add(u);
+                    foundUsername = true;
+                  }
                 }
               });
             } 
             
             // If the node itself has an href
-            if (typeof node.href === 'string' && node.href.includes('instagram.com/')) {
+            if (!foundUsername && typeof node.href === 'string') {
                if (typeof node.value === 'string' && node.value.trim() !== '') {
                  usernames.add(node.value);
+                 foundUsername = true;
                } else {
-                 const match = node.href.match(/instagram\.com\/([^/]+)/);
-                 if (match && match[1]) usernames.add(match[1]);
+                 const u = extractFromHref(node.href);
+                 if (u) {
+                   usernames.add(u);
+                   foundUsername = true;
+                 }
                }
             } 
             
             // Generic fallbacks
-            if (typeof node.username === 'string' && node.username.trim() !== '') {
+            if (!foundUsername && typeof node.username === 'string' && node.username.trim() !== '') {
               usernames.add(node.username);
+              foundUsername = true;
             }
             
-            // Always traverse deeper to ensure we don't miss anything
-            Object.values(node).forEach(traverse);
+            // Only traverse deeper if we haven't identified this node as a username block
+            if (!foundUsername) {
+              Object.values(node).forEach(traverse);
+            }
           }
         };
+        
         traverse(data);
         return Array.from(usernames);
       };
@@ -252,6 +278,7 @@ export default function Dashboard() {
         username: profile.username || '',
         phoneNumber: profile.phoneNumber || '',
         countryCode: profile.countryCode || '+62',
+        hidePrices: profile.hidePrices || false,
         socials: profile.socials || { instagram: '', facebook: '', x: '', linkedin: '' },
         socialsOrder: profile.socialsOrder || null
       });
@@ -448,35 +475,35 @@ export default function Dashboard() {
         </div>
         <div className="flex-1 p-4 space-y-1">
           <button
-            onClick={() => setActiveTab('links')}
+            onClick={() => navigate('/dashboard')}
             className={clsx("w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors", activeTab === 'links' ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-gray-50")}
           >
             <LayoutDashboard className="w-5 h-5" /> Dashboard
           </button>
           
           <button
-            onClick={() => setActiveTab('shortener')}
+            onClick={() => navigate('/shortener')}
             className={clsx("w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors", activeTab === 'shortener' ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-gray-50")}
           >
             <Scissors className="w-5 h-5" /> Shortener
           </button>
 
           <button
-            onClick={() => setActiveTab('appearance')}
+            onClick={() => navigate('/appearance')}
             className={clsx("w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors", activeTab === 'appearance' ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-gray-50")}
           >
             <Palette className="w-5 h-5" /> Appearance
           </button>
 
           <button
-            onClick={() => setActiveTab('checker')}
+            onClick={() => navigate('/checker')}
             className={clsx("w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors", activeTab === 'checker' ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-gray-50")}
           >
             <Users className="w-5 h-5" /> Social Checker
           </button>
 
           <button
-            onClick={() => setActiveTab('settings')}
+            onClick={() => navigate('/settings')}
             className={clsx("w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors", activeTab === 'settings' ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-gray-50")}
           >
             <Settings className="w-5 h-5" /> Settings
@@ -496,27 +523,27 @@ export default function Dashboard() {
           {/* Mobile Tabs */}
           <div className="flex md:hidden gap-2 lg:col-span-12 mb-4 overflow-x-auto pb-2 scrollbar-hide">
             <button
-              onClick={() => setActiveTab('links')}
+              onClick={() => navigate('/dashboard')}
               className={clsx("flex-1 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium", activeTab === 'links' ? "bg-white shadow border border-gray-100" : "text-slate-500")}
             >Links</button>
 
             <button
-              onClick={() => setActiveTab('shortener')}
+              onClick={() => navigate('/shortener')}
               className={clsx("flex-1 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium", activeTab === 'shortener' ? "bg-white shadow border border-gray-100" : "text-slate-500")}
             >Shorts</button>
 
             <button
-              onClick={() => setActiveTab('appearance')}
+              onClick={() => navigate('/appearance')}
               className={clsx("flex-1 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium", activeTab === 'appearance' ? "bg-white shadow border border-gray-100" : "text-slate-500")}
             >Appearance</button>
 
             <button
-              onClick={() => setActiveTab('checker')}
+              onClick={() => navigate('/checker')}
               className={clsx("flex-1 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium", activeTab === 'checker' ? "bg-white shadow border border-gray-100" : "text-slate-500")}
             >Checker</button>
 
             <button
-              onClick={() => setActiveTab('settings')}
+              onClick={() => navigate('/settings')}
               className={clsx("flex-1 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium", activeTab === 'settings' ? "bg-white shadow border border-gray-100" : "text-slate-500")}
             >Settings</button>
             <button onClick={logout} className="p-2 text-slate-500 shrink-0"><LogOut className="w-5 h-5" /></button>
@@ -1165,7 +1192,37 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  <div className="pt-6 mt-6 border-t border-gray-100 flex justify-end">
+                  <div className="mt-8 pt-6 border-t border-gray-100">
+                    <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white">
+                      <div className="flex-1 pr-4">
+                        <span className="block text-sm font-bold text-slate-800">Hide Prices</span>
+                        <span className="block text-xs text-slate-500 mt-1">Don't show prices on link cards when users view your page in grid or list layout.</span>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          const newStatus = !profileForm.hidePrices;
+                          setProfileForm({ ...profileForm, hidePrices: newStatus });
+                          try {
+                            await updateProfile({ hidePrices: newStatus });
+                            showToast(`Prices are now ${newStatus ? 'hidden' : 'visible'}!`);
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }}
+                        className={clsx("w-11 h-6 rounded-full flex p-0.5 transition-colors duration-300 focus:outline-none shrink-0", profileForm.hidePrices ? "bg-emerald-500" : "bg-slate-200")}
+                      >
+                        <div className={clsx("w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-sm transition-transform duration-300", profileForm.hidePrices ? "translate-x-5" : "translate-x-0")}>
+                          {profileForm.hidePrices ? (
+                            <div className="w-0.5 h-2.5 bg-emerald-500 rounded-full" />
+                          ) : (
+                            <div className="w-2 h-2 border-2 border-slate-300 rounded-full" />
+                          )}
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 mt-6 flex justify-end">
                     <button className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                       onClick={handleProfileSave} disabled={savingProfile}>
                       {savingProfile ? 'Saving...' : 'Save Appearance'}

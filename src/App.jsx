@@ -31,6 +31,10 @@ function App() {
                   <Dashboard />
                 </ProtectedRoute>
               } />
+              <Route path="/shortener" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/appearance" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/checker" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             </Routes>
           </Suspense>
         </BrowserRouter>
