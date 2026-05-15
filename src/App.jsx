@@ -22,7 +22,8 @@ function App() {
         <BrowserRouter>
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-50 text-slate-500">Loading...</div>}>
             <Routes>
-              <Route path="/" element={<PublicPage />} />
+              <Route path="/" element={<Navigate to="/links" replace />} />
+              <Route path="/links" element={<PublicPage />} />
               <Route path="/:userId" element={<PublicPage />} />
               <Route path="/l/:shortCode" element={<RedirectHandler />} />
               <Route path="/login" element={<Login />} />

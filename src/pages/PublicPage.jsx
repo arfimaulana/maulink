@@ -38,6 +38,19 @@ export default function PublicPage() {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
+
+  useEffect(() => {
+    if (profile?.name) {
+      document.title = `${profile.name} - Maulink`;
+      let metaDesc = document.querySelector('meta[name="description"]');
+      if (!metaDesc) {
+        metaDesc = document.createElement('meta');
+        metaDesc.name = "description";
+        document.head.appendChild(metaDesc);
+      }
+      metaDesc.content = profile.subLabel || "Check out my links!";
+    }
+  }, [profile?.name, profile?.subLabel]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortOption, setSortOption] = useState('newest');
@@ -158,8 +171,8 @@ export default function PublicPage() {
                 };
                 const Icon = SOCIAL_ICONS[net.toLowerCase()] || Link2;
                 return (
-                  <a key={net} href={getSocialUrl(net, value)} target="_blank" rel="noreferrer" className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-slate-600 hover:text-blue-600 hover:-translate-y-0.5 transition-all">
-                    <Icon className="w-5 h-5" />
+                  <a key={net} href={getSocialUrl(net, value)} target="_blank" rel="noopener noreferrer" aria-label={`Visit my ${net} profile`} className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-slate-600 hover:text-blue-600 hover:-translate-y-0.5 transition-all">
+                    <Icon className="w-5 h-5" aria-hidden="true" />
                   </a>
                 );
               })}
@@ -254,8 +267,9 @@ export default function PublicPage() {
                     viewLayout === 'grid' ? "bg-slate-800 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
                   )}
                   title="Grid View"
+                  aria-label="Switch to Grid View"
                 >
-                  <LayoutGrid className="w-4 h-4" />
+                  <LayoutGrid className="w-4 h-4" aria-hidden="true" />
                 </button>
                 <button 
                   onClick={() => setViewLayout('list')}
@@ -264,8 +278,9 @@ export default function PublicPage() {
                     viewLayout === 'list' ? "bg-slate-800 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
                   )}
                   title="List View"
+                  aria-label="Switch to List View"
                 >
-                  <List className="w-4 h-4" />
+                  <List className="w-4 h-4" aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -299,7 +314,7 @@ export default function PublicPage() {
               key={link.id} 
               href={link.url} 
               target="_blank" 
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className={clsx(
                 "group bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100 overflow-hidden hover:shadow-md transition-all hover:-translate-y-0.5 relative flex",
                 viewLayout === 'grid' ? "flex-col" : "flex-row items-center p-2"
@@ -349,7 +364,7 @@ export default function PublicPage() {
                     </h3>
                   </div>
                   {viewLayout === 'grid' && (!link.price || profile.hidePrices) && (
-                    <div className="w-7 h-7 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0 mb-0.5">
+                    <div className="w-7 h-7 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0 mb-0.5" aria-hidden="true">
                       <ArrowUpRight className="w-3.5 h-3.5" />
                     </div>
                   )}
@@ -365,7 +380,7 @@ export default function PublicPage() {
                     </span>
                     
                     {viewLayout === 'grid' && (
-                      <div className="w-7 h-7 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
+                      <div className="w-7 h-7 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0" aria-hidden="true">
                         <ArrowUpRight className="w-3.5 h-3.5" />
                       </div>
                     )}
