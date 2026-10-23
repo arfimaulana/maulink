@@ -1,14 +1,4 @@
-/* Apercu Mono — premium font; ensure the file is available on your server or system */
-@font-face {
-  font-family: 'Apercu Mono';
-  src: local('Apercu Mono'),
-       local('ApercuMono'),
-       url('fonts/ApercuMono.woff2') format('woff2'),
-       url('fonts/ApercuMono.woff') format('woff');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500&display=swap');
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -27,16 +17,20 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  font-family: 'Apercu Mono', 'Courier New', monospace;
+  min-height: 100dvh; /* dynamic viewport for mobile browsers */
+  font-family: 'Geist Mono', 'Courier New', monospace;
   color: #e0e0e0;
+  padding: 1.5rem;
 }
 
 .container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 1rem;
   text-align: center;
+  width: 100%;
+  max-width: 480px;
   animation: fadeIn 1s ease forwards;
 }
 
@@ -50,6 +44,7 @@ body {
   align-items: center;
   justify-content: center;
   animation: floatLogo 4s ease-in-out infinite;
+  margin-bottom: 4px;
 }
 
 .logo-img {
@@ -61,16 +56,17 @@ body {
 
 /* Headline */
 .headline {
-  font-size: 2rem;
+  font-size: clamp(1.5rem, 5vw, 2rem);
   font-weight: 400;
   color: #ffffff;
   letter-spacing: -0.08em;
+  line-height: 1.2;
 }
 
 /* Subtext */
 .subtext {
-  font-size: 0.875rem;
-  line-height: 1.8;
+  font-size: clamp(0.75rem, 2.5vw, 0.875rem);
+  line-height: 1.9;
   color: #888888;
   letter-spacing: -0.08em;
 }
@@ -93,5 +89,50 @@ body {
   }
   50% {
     transform: translateY(-6px);
+  }
+}
+
+/* ── Responsive ─────────────────────────────── */
+
+/* Small phones (< 360px) */
+@media (max-width: 360px) {
+  .logo-wrapper {
+    width: 52px;
+    height: 52px;
+    border-radius: 13px;
+  }
+
+  .container {
+    gap: 0.75rem;
+  }
+}
+
+/* Landscape phones */
+@media (max-height: 480px) and (orientation: landscape) {
+  body {
+    align-items: flex-start;
+    padding: 2rem 1.5rem;
+  }
+
+  .container {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 1.25rem 1.5rem;
+    max-width: 680px;
+  }
+
+  .logo-wrapper {
+    margin-bottom: 0;
+    animation: none; /* disable float in landscape to avoid layout shift */
+  }
+
+  .text-group {
+    text-align: left;
+  }
+
+  .subtext br {
+    display: none;
   }
 }
